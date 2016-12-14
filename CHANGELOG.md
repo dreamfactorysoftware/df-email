@@ -5,6 +5,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased]
 ### Added
 ### Changed
+- DF-920 Allowing SMTP service without authentication.
 ### Fixed
 
 ## 0.1.0 - 2016-11-30
