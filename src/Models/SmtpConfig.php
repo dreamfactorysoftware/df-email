@@ -27,8 +27,6 @@ class SmtpConfig extends BaseEmailServiceConfigModel
     {
         $validator = static::makeValidator($config, [
             'host'     => 'required',
-            'username' => 'required',
-            'password' => 'required'
         ], $create);
 
         if ($validator->fails()) {
