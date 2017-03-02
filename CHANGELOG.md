@@ -6,6 +6,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 ### Changed
 ### Fixed
+- Fixed 500 - 'view not found error' caused by L5.4 update.
 
 ## [0.1.1] - 2017-01-16
 ### Changed
