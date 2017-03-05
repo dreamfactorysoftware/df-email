@@ -14,10 +14,10 @@ class Mailer extends \Illuminate\Mail\Mailer
      *
      * @return mixed
      */
-    protected function getView($view, $data)
+    protected function renderView($view, $data)
     {
         try {
-            return parent::getView($view, $data);
+            return parent::renderView($view, $data);
         } catch (\InvalidArgumentException $e) {
             return static::applyDataToView($view, $data);
         }
