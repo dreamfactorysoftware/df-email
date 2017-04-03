@@ -2,7 +2,6 @@
 
 namespace DreamFactory\Core\Email\Models;
 
-use DreamFactory\Core\Exceptions\BadRequestException;
 
 class MandrillConfig extends CloudEmailConfig
 {
@@ -12,22 +11,7 @@ class MandrillConfig extends CloudEmailConfig
         'parameters'
     ];
 
-    /**
-     * {@inheritdoc}
-     */
-    public static function validateConfig($config, $create = true)
-    {
-        $validator = static::makeValidator($config, [
-            'key' => 'required'
-        ], $create);
-
-        if ($validator->fails()) {
-            $messages = $validator->messages()->getMessages();
-            throw new BadRequestException('Validation failed.', null, null, $messages);
-        }
-
-        return true;
-    }
+    protected $rules = ['key' => 'required'];
 
     /**
      * {@inheritdoc}

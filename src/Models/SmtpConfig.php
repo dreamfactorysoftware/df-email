@@ -2,10 +2,13 @@
 
 namespace DreamFactory\Core\Email\Models;
 
-use DreamFactory\Core\Exceptions\BadRequestException;
+use DreamFactory\Core\Email\Components\SupportsEmailParameters;
+use DreamFactory\Core\Models\BaseServiceConfigModel;
 
-class SmtpConfig extends BaseEmailServiceConfigModel
+class SmtpConfig extends BaseServiceConfigModel
 {
+    use SupportsEmailParameters;
+
     protected $table = 'smtp_config';
 
     protected $fillable = [
@@ -20,22 +23,7 @@ class SmtpConfig extends BaseEmailServiceConfigModel
 
     protected $encrypted = ['username', 'password'];
 
-    /**
-     * {@inheritdoc}
-     */
-    public static function validateConfig($config, $create = true)
-    {
-        $validator = static::makeValidator($config, [
-            'host'     => 'required',
-        ], $create);
-
-        if ($validator->fails()) {
-            $messages = $validator->messages()->getMessages();
-            throw new BadRequestException('Validation failed.', null, null, $messages);
-        }
-
-        return true;
-    }
+    protected $rules = ['host' => 'required'];
 
     /**
      * @param array $schema

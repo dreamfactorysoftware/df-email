@@ -2,28 +2,15 @@
 
 namespace DreamFactory\Core\Email\Models;
 
-class LocalEmailConfig extends CloudEmailConfig
+use DreamFactory\Core\Email\Components\SupportsEmailParameters;
+use DreamFactory\Core\Models\BaseServiceConfigNoDbModel;
+
+class LocalEmailConfig extends BaseServiceConfigNoDbModel
 {
+    use SupportsEmailParameters;
+
     protected $fillable = [
         'service_id',
         'parameters'
     ];
-
-    protected $encrypted = [];
-
-    /**
-     * {@inheritdoc}
-     */
-    public static function getConfigSchema()
-    {
-        $schema = parent::getConfigSchema();
-        $out = [];
-        foreach ($schema as $key => $field) {
-            if ($field['name'] === 'parameters') {
-                $out[] = $schema[$key];
-            }
-        }
-
-        return $out;
-    }
 }

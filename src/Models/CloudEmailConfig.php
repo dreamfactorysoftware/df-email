@@ -2,8 +2,13 @@
 
 namespace DreamFactory\Core\Email\Models;
 
-class CloudEmailConfig extends BaseEmailServiceConfigModel
+use DreamFactory\Core\Email\Components\SupportsEmailParameters;
+use DreamFactory\Core\Models\BaseServiceConfigModel;
+
+class CloudEmailConfig extends BaseServiceConfigModel
 {
+    use SupportsEmailParameters;
+
     protected $table = 'cloud_email_config';
 
     protected $fillable = [

@@ -2,27 +2,13 @@
 
 namespace DreamFactory\Core\Email\Models;
 
-use DreamFactory\Core\Exceptions\BadRequestException;
 
 class MailGunConfig extends CloudEmailConfig
 {
-    /**
-     * {@inheritdoc}
-     */
-    public static function validateConfig($config, $create = true)
-    {
-        $validator = static::makeValidator($config, [
-            'domain' => 'required',
-            'key'    => 'required'
-        ], $create);
-
-        if ($validator->fails()) {
-            $messages = $validator->messages()->getMessages();
-            throw new BadRequestException('Validation failed.', null, null, $messages);
-        }
-
-        return true;
-    }
+    protected $rules = [
+        'domain' => 'required',
+        'key'    => 'required'
+    ];
 
     /**
      * @param array $schema
