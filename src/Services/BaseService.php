@@ -12,7 +12,6 @@ use DreamFactory\Core\Exceptions\InternalServerErrorException;
 use DreamFactory\Core\Models\EmailTemplate;
 use DreamFactory\Core\Services\BaseRestService;
 use DreamFactory\Core\Utility\Session;
-use DreamFactory\Library\Utility\Inflector;
 use Illuminate\Mail\Message;
 use Swift_Transport as SwiftTransport;
 use Swift_Mailer as SwiftMailer;
@@ -253,7 +252,7 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
     public static function getApiDocInfo($service)
     {
         $name = strtolower($service->name);
-        $capitalized = Inflector::camelize($service->name);
+        $capitalized = camelize($service->name);
         $paths = [
             '/' . $name => [
                 'post' => [
