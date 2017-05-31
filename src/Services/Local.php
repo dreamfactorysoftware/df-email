@@ -33,7 +33,7 @@ class Local extends BaseService
      */
     public static function getTransport($command)
     {
-        if (!empty($command)) {
+        if (empty($command)) {
             return SendmailTransport::newInstance();
         }
 
