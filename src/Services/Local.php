@@ -12,23 +12,17 @@ class Local extends BaseService
      */
     protected function setTransport($config)
     {
-        if (!empty($command = array_get($config, 'command'))) {
-            $this->transport = static::getTransport($command);
+        $command = array_get($config, 'command');
+        // old usage of mail config and env may be set to smtp
+        if (empty($command) && ('smtp' == Config::get('mail.driver'))) {
+            $host = Config::get('mail.host');
+            $port = Config::get('mail.port');
+            $encryption = Config::get('mail.encryption');
+            $username = Config::get('mail.username');
+            $password = Config::get('mail.password');
+            $this->transport = Smtp::getTransport($host, $port, $encryption, $username, $password);
         } else {
-            // old usage of mail config and env
-            switch (Config::get('mail.driver')) {
-                case 'sendmail':
-                    $this->transport = static::getTransport(Config::get('mail.sendmail'));
-                    break;
-                case 'smtp':
-                    $host = Config::get('mail.host');
-                    $port = Config::get('mail.port');
-                    $encryption = Config::get('mail.encryption');
-                    $username = Config::get('mail.username');
-                    $password = Config::get('mail.password');
-                    $this->transport = Smtp::getTransport($host, $port, $encryption, $username, $password);
-                    break;
-            }
+            $this->transport = static::getTransport($command);
         }
     }
 
