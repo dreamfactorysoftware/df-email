@@ -10,6 +10,7 @@ use DreamFactory\Core\Email\Services\Local;
 use DreamFactory\Core\Email\Services\MailGun;
 use DreamFactory\Core\Email\Services\Mandrill;
 use DreamFactory\Core\Email\Services\Smtp;
+use DreamFactory\Core\Email\Services\SparkPost;
 use DreamFactory\Core\Enums\ServiceTypeGroups;
 use DreamFactory\Core\Services\ServiceManager;
 use DreamFactory\Core\Services\ServiceType;
@@ -80,6 +81,21 @@ class ServiceProvider extends \Illuminate\Support\ServiceProvider
                         },
                         'factory'         => function ($config) {
                             return new Mandrill($config);
+                        },
+                    ]));
+            $df->addType(
+                new ServiceType(
+                    [
+                        'name'            => 'sparkpost_email',
+                        'label'           => 'SparkPost',
+                        'description'     => 'SparkPost email service',
+                        'group'           => ServiceTypeGroups::EMAIL,
+                        'config_handler'  => MandrillConfig::class, // same as SparkPost, only key
+                        'default_api_doc' => function ($service) {
+                            return $this->buildServiceDoc($service->id, SparkPost::getApiDocInfo($service));
+                        },
+                        'factory'         => function ($config) {
+                            return new SparkPost($config);
                         },
                     ]));
         });

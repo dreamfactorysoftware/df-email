@@ -2,10 +2,8 @@
 
 namespace DreamFactory\Core\Email\Services;
 
-use DreamFactory\Core\Aws\Services\Ses;
-use DreamFactory\Core\Exceptions\InternalServerErrorException;
-use Swift_MailTransport as MailTransport;
 use Swift_SendmailTransport as SendmailTransport;
+use Config;
 
 class Local extends BaseService
 {
@@ -14,50 +12,31 @@ class Local extends BaseService
      */
     protected function setTransport($config)
     {
-        $driver = \Config::get('mail.driver');
-        $transport = null;
+        $command = array_get($config, 'command');
+        // old usage of mail config and env may be set to smtp
+        if (empty($command) && ('smtp' == Config::get('mail.driver'))) {
+            $host = Config::get('mail.host');
+            $port = Config::get('mail.port');
+            $encryption = Config::get('mail.encryption');
+            $username = Config::get('mail.username');
+            $password = Config::get('mail.password');
+            $this->transport = Smtp::getTransport($host, $port, $encryption, $username, $password);
+        } else {
+            $this->transport = static::getTransport($command);
+        }
+    }
 
-        switch ($driver) {
-            case 'sendmail':
-                $command = \Config::get('mail.sendmail');
-                if (empty($command)) {
-                    throw new InternalServerErrorException('Missing Command for sendmail driver.');
-                }
-                $transport = SendmailTransport::newInstance($command);
-
-                break;
-            case 'smtp':
-                $host = \Config::get('mail.host');
-                $port = \Config::get('mail.port');
-                $encryption = \Config::get('mail.encryption');
-                $username = \Config::get('mail.username');
-                $password = \Config::get('mail.password');
-                $transport = Smtp::getTransport($host, $port, $encryption, $username, $password);
-
-                break;
-            case 'mailgun':
-                $domain = \Config::get('services.mailgun.domain');
-                $key = \Config::get('services.mailgun.secret');
-                $key = (!empty($key)) ? $key : \Config::get('services.mailgun.key');
-                $transport = MailGun::getTransport($domain, $key);
-
-                break;
-            case 'mandrill':
-                $key = \Config::get('services.mandrill.secret');
-                $key = (!empty($key)) ? $key : \Config::get('services.mandrill.key');
-                $transport = Mandrill::getTransport($key);
-                break;
-            case 'ses':
-                $key = \Config::get('services.ses.key');
-                $secret = \Config::get('services.ses.secret');
-                $region = \Config::get('services.ses.region');
-                $transport = Ses::getTransport($key, $secret, $region);
-
-                break;
-            default:
-                $transport = MailTransport::newInstance();
+    /**
+     * @param $command
+     *
+     * @return SendmailTransport
+     */
+    public static function getTransport($command)
+    {
+        if (empty($command)) {
+            return SendmailTransport::newInstance();
         }
 
-        $this->transport = $transport;
+        return SendmailTransport::newInstance($command);
     }
 }
