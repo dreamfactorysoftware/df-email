@@ -6,6 +6,7 @@ use DreamFactory\Core\Email\Models\LocalEmailConfig;
 use DreamFactory\Core\Email\Models\MailGunConfig;
 use DreamFactory\Core\Email\Models\MandrillConfig;
 use DreamFactory\Core\Email\Models\SmtpConfig;
+use DreamFactory\Core\Email\Models\SparkpostConfig;
 use DreamFactory\Core\Email\Services\Local;
 use DreamFactory\Core\Email\Services\MailGun;
 use DreamFactory\Core\Email\Services\Mandrill;
@@ -90,7 +91,7 @@ class ServiceProvider extends \Illuminate\Support\ServiceProvider
                         'label'           => 'SparkPost',
                         'description'     => 'SparkPost email service',
                         'group'           => ServiceTypeGroups::EMAIL,
-                        'config_handler'  => MandrillConfig::class, // same as SparkPost, only key
+                        'config_handler'  => SparkpostConfig::class,
                         'default_api_doc' => function ($service) {
                             return $this->buildServiceDoc($service->id, SparkPost::getApiDocInfo($service));
                         },
