@@ -1,7 +1,6 @@
 <?php
 namespace DreamFactory\Core\Email;
 
-use DreamFactory\Core\Components\ServiceDocBuilder;
 use DreamFactory\Core\Email\Models\LocalEmailConfig;
 use DreamFactory\Core\Email\Models\MailGunConfig;
 use DreamFactory\Core\Email\Models\MandrillConfig;
@@ -18,8 +17,6 @@ use DreamFactory\Core\Services\ServiceType;
 
 class ServiceProvider extends \Illuminate\Support\ServiceProvider
 {
-    use ServiceDocBuilder;
-
     public function register()
     {
         // Add our scripting service types.
@@ -32,9 +29,6 @@ class ServiceProvider extends \Illuminate\Support\ServiceProvider
                         'description'     => 'Local email service using system configuration.',
                         'group'           => ServiceTypeGroups::EMAIL,
                         'config_handler'  => LocalEmailConfig::class,
-                        'default_api_doc' => function ($service) {
-                            return $this->buildServiceDoc($service->id, Local::getApiDocInfo($service));
-                        },
                         'factory'         => function ($config) {
                             return new Local($config);
                         },
@@ -47,9 +41,6 @@ class ServiceProvider extends \Illuminate\Support\ServiceProvider
                         'description'     => 'SMTP-based email service',
                         'group'           => ServiceTypeGroups::EMAIL,
                         'config_handler'  => SmtpConfig::class,
-                        'default_api_doc' => function ($service) {
-                            return $this->buildServiceDoc($service->id, Smtp::getApiDocInfo($service));
-                        },
                         'factory'         => function ($config) {
                             return new Smtp($config);
                         },
@@ -62,9 +53,6 @@ class ServiceProvider extends \Illuminate\Support\ServiceProvider
                         'description'     => 'Mailgun email service',
                         'group'           => ServiceTypeGroups::EMAIL,
                         'config_handler'  => MailGunConfig::class,
-                        'default_api_doc' => function ($service) {
-                            return $this->buildServiceDoc($service->id, MailGun::getApiDocInfo($service));
-                        },
                         'factory'         => function ($config) {
                             return new MailGun($config);
                         },
@@ -77,9 +65,6 @@ class ServiceProvider extends \Illuminate\Support\ServiceProvider
                         'description'     => 'Mandrill email service',
                         'group'           => ServiceTypeGroups::EMAIL,
                         'config_handler'  => MandrillConfig::class,
-                        'default_api_doc' => function ($service) {
-                            return $this->buildServiceDoc($service->id, Mandrill::getApiDocInfo($service));
-                        },
                         'factory'         => function ($config) {
                             return new Mandrill($config);
                         },
@@ -92,9 +77,6 @@ class ServiceProvider extends \Illuminate\Support\ServiceProvider
                         'description'     => 'SparkPost email service',
                         'group'           => ServiceTypeGroups::EMAIL,
                         'config_handler'  => SparkpostConfig::class,
-                        'default_api_doc' => function ($service) {
-                            return $this->buildServiceDoc($service->id, SparkPost::getApiDocInfo($service));
-                        },
                         'factory'         => function ($config) {
                             return new SparkPost($config);
                         },
