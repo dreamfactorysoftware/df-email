@@ -4,13 +4,14 @@ namespace DreamFactory\Core\Email\Services;
 
 use App;
 use DreamFactory\Core\Contracts\EmailServiceInterface;
+use DreamFactory\Core\Email\Components\Attachment;
 use DreamFactory\Core\Email\Components\EmailUtilities;
 use DreamFactory\Core\Email\Components\Mailer as DfMailer;
 use DreamFactory\Core\Enums\Verbs;
+use DreamFactory\Core\Exceptions\ForbiddenException;
 use DreamFactory\Core\Exceptions\NotFoundException;
 use DreamFactory\Core\Exceptions\BadRequestException;
 use DreamFactory\Core\Exceptions\InternalServerErrorException;
-use ServiceManager;
 use DreamFactory\Core\Models\EmailTemplate;
 use DreamFactory\Core\Services\BaseRestService;
 use DreamFactory\Core\Utility\FileUtilities;
@@ -18,6 +19,7 @@ use DreamFactory\Core\Utility\Session;
 use Illuminate\Mail\Message;
 use Swift_Transport as SwiftTransport;
 use Swift_Mailer as SwiftMailer;
+use ServiceManager;
 
 abstract class BaseService extends BaseRestService implements EmailServiceInterface
 {
@@ -58,6 +60,9 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
      */
     abstract protected function setTransport($config);
 
+    /**
+     * @throws \DreamFactory\Core\Exceptions\InternalServerErrorException
+     */
     protected function setMailer()
     {
         if (!$this->transport instanceof SwiftTransport) {
@@ -68,6 +73,9 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
         $this->mailer = new DfMailer(App::make('view'), $swiftMailer, App::make('events'));
     }
 
+    /**
+     * @param $config
+     */
     protected function setParameters($config)
     {
         $this->parameters = (array)array_get($config, 'parameters', []);
@@ -86,49 +94,142 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
     }
 
     /**
+     * Gets uploaded file(s) for attachment.
+     *
+     * @return array
+     */
+    protected function getUploadedAttachment()
+    {
+        $attachment = [];
+        $file = $this->request->getFile('file', $this->request->getFile('attachment'));
+
+        if (is_array($file)) {
+            if (isset($file['tmp_name'])) {
+                $attachment[] = new Attachment($file['tmp_name'], array_get($file, 'name'));
+            } else {
+                foreach ($file as $f) {
+                    $attachment[] = new Attachment(array_get($f, 'tmp_name'), array_get($f, 'name'));
+                }
+            }
+        }
+
+        return $attachment;
+    }
+
+    /**
+     * Gets URL imported file(s) for attachment.
+     *
+     * @return array
+     * @throws \DreamFactory\Core\Exceptions\InternalServerErrorException
+     */
+    protected function getUrlAttachment()
+    {
+        $attachment = [];
+        $file = $this->request->input('import_url', $this->request->input('attachment'));
+
+        if (!empty($file)) {
+            if (!is_array($file)) {
+                $files = explode(',', $file);
+            } else {
+                $files = $file;
+            }
+            try {
+                foreach ($files as $f) {
+                    if (is_string($f)) {
+                        $fileURL = urldecode($f);
+                        $filePath = FileUtilities::importUrlFileToTemp($fileURL);
+                        $attachment[] = new Attachment($filePath, basename($fileURL));
+                    }
+                }
+            } catch (\Exception $e) {
+                throw new InternalServerErrorException('Failed to import attachment file from url. ' .
+                    $e->getMessage());
+            }
+        }
+
+        return $attachment;
+    }
+
+    /**
+     * Gets file(s) stored in storage service(s) for attachment.
+     *
+     * @return array
+     * @throws \DreamFactory\Core\Exceptions\InternalServerErrorException
+     */
+    protected function getServiceAttachment()
+    {
+        $attachment = [];
+        $file = $this->request->input('import_url', $this->request->input('attachment'));
+
+        if (!empty($file) && is_array($file)) {
+            if (isset($file['service'])) {
+                $files = [$file];
+            } else {
+                $files = $file;
+            }
+
+            try {
+                foreach ($files as $f) {
+                    if (is_array($f)) {
+                        $service = array_get($f, 'service');
+                        $path = array_get($f, 'path', array_get($f, 'file_path'));
+
+                        if (empty($service) || empty($path)) {
+                            throw new BadRequestException('No service name and file path provided in request.');
+                        }
+
+                        if (Session::checkForAnyServicePermissions($service, $path)) {
+                            /** @var \DreamFactory\Core\Contracts\ServiceResponseInterface $result */
+                            $result = ServiceManager::handleRequest(
+                                $service,
+                                Verbs::GET,
+                                $path,
+                                ['include_properties' => true, 'content' => true, 'is_base64' => true]
+                            );
+
+                            if ($result->getStatusCode() !== 200) {
+                                throw new InternalServerErrorException(
+                                    'Could to retrieve attachment file: ' .
+                                    $path .
+                                    ' from storage service: ' .
+                                    $service);
+                            }
+
+                            $content = $result->getContent();
+                            $content = base64_decode(array_get($content, 'content', ''));
+                            $fileName = basename($path);
+                            $filePath = sys_get_temp_dir() . '/' . $fileName;
+                            file_put_contents($filePath, $content);
+                            $attachment[] = new Attachment($filePath, $fileName);
+                        } else {
+                            throw new ForbiddenException(
+                                'You do not have enough privileges to access file: ' .
+                                $path .
+                                ' in service ' .
+                                $service);
+                        }
+                    }
+                }
+            } catch (\Exception $e) {
+                throw new InternalServerErrorException('Failed to get attachment file from storage service. ' .
+                    $e->getMessage());
+            }
+        }
+
+        return $attachment;
+    }
+
+    /**
      * @return array|mixed|string
      * @throws \DreamFactory\Core\Exceptions\BadRequestException
      */
     protected function getAttachments()
     {
-        // Get uploaded file
-        $file = $this->request->getFile('file', $this->request->getFile('attachment'));
-
-        // Get file from a url
-        if (empty($file)) {
-            $file = $this->request->input('import_url', $this->request->input('attachment'));
-            if(isset($file['service'])){
-//                $storageService = $file['service'];
-//                $storagePath = array_get($file, 'path', array_get($file, 'file_path'));
-//
-//                if(empty($storagePath)){
-//                    throw new BadRequestException('No storage path provided for attachment stored in storage service - ' . $storageService);
-//                }
-//
-//                $result = ServiceManager::handleRequest($storageService, Verbs::GET, $storagePath);
-            } elseif(!empty($file)) {
-                if(!is_array($file)){
-                    $files = explode(',', $file);
-                } else {
-                    $files = $file;
-                }
-                try {
-                    foreach ($files as $k => $v) {
-                        $filePath = FileUtilities::importUrlFileToTemp(urldecode($v));
-                        $files[$k] = [
-                            'name'     => basename($v),
-                            'tmp_name' => $filePath
-                        ];
-                    }
-
-                    $file = (count($files) === 1)? $files[0] : $files;
-                } catch (\Exception $e){
-                    throw new BadRequestException('Failed to import attachment file from url. ' . $e->getMessage());
-                }
-            }
-        }
-
-        return $file;
+        return array_merge(
+            $this->getUploadedAttachment(),
+            $this->getUrlAttachment(),
+            $this->getServiceAttachment()
+        );
     }
 
     /**
@@ -139,7 +240,7 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
     protected function handlePOST()
     {
         $data = $this->getPayloadData();
-        if(empty($data)){
+        if (empty($data)) {
             $data = $this->request->input();
         }
         $templateName = $this->request->getParameter('template', $this->request->getPayloadData('template'));
@@ -255,15 +356,31 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
                     $m->subject(static::applyDataToView($subject, $data));
                 }
 
-                if(!empty($attachment) && is_array($attachment)){
-                    if(isset($attachment['name'])){
-                        $attachment[] = $attachment;
+                if (!empty($attachment)) {
+                    if (!is_array($attachment)) {
+                        $attachment = [$attachment];
                     }
-                    foreach ($attachment as $att){
+                    foreach ($attachment as $att) {
+                        if ($att instanceof Attachment) {
+                            $m->attachData($att->getContent(), $att->getName());
+                            $att->unlink();
+                        }
+                    }
+                }
+
+                if (!empty($attachment) && is_array($attachment)) {
+                    if (isset($attachment['name'])) {
+                        $attachments[] = $attachment;
+                    } else {
+                        $attachments = $attachment;
+                    }
+                    foreach ($attachments as $att) {
                         $fileName = array_get($att, 'name');
                         $filePath = array_get($att, 'tmp_name');
-                        if(is_file($filePath)) {
+                        if (is_file($filePath)) {
                             $m->attachData(file_get_contents($filePath), $fileName);
+                            // Delete from local /tmp directory.
+                            @unlink($filePath);
                         }
                     }
                 }
@@ -448,18 +565,18 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
                         'type'        => 'string',
                         'description' => 'Optional reply to email.',
                     ],
-                    'attachment' => [
-                        'type' => 'array',
+                    'attachment'     => [
+                        'type'        => 'array',
                         'description' => 'File(s) to import from storage service for attachment',
-                        'items' => [
-                            'type' => 'object',
+                        'items'       => [
+                            'type'       => 'object',
                             'properties' => [
                                 'service' => [
-                                    'type' => 'string',
+                                    'type'        => 'string',
                                     'description' => 'Name of the storage service to use.'
                                 ],
-                                'path' => [
-                                    'type' => 'string',
+                                'path'    => [
+                                    'type'        => 'string',
                                     'description' => 'File path relative to the service.'
                                 ]
                             ]
