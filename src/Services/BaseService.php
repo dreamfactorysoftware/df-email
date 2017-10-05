@@ -6,11 +6,14 @@ use App;
 use DreamFactory\Core\Contracts\EmailServiceInterface;
 use DreamFactory\Core\Email\Components\EmailUtilities;
 use DreamFactory\Core\Email\Components\Mailer as DfMailer;
+use DreamFactory\Core\Enums\Verbs;
 use DreamFactory\Core\Exceptions\NotFoundException;
 use DreamFactory\Core\Exceptions\BadRequestException;
 use DreamFactory\Core\Exceptions\InternalServerErrorException;
+use ServiceManager;
 use DreamFactory\Core\Models\EmailTemplate;
 use DreamFactory\Core\Services\BaseRestService;
+use DreamFactory\Core\Utility\FileUtilities;
 use DreamFactory\Core\Utility\Session;
 use Illuminate\Mail\Message;
 use Swift_Transport as SwiftTransport;
@@ -83,6 +86,52 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
     }
 
     /**
+     * @return array|mixed|string
+     * @throws \DreamFactory\Core\Exceptions\BadRequestException
+     */
+    protected function getAttachments()
+    {
+        // Get uploaded file
+        $file = $this->request->getFile('file', $this->request->getFile('attachment'));
+
+        // Get file from a url
+        if (empty($file)) {
+            $file = $this->request->input('import_url', $this->request->input('attachment'));
+            if(isset($file['service'])){
+//                $storageService = $file['service'];
+//                $storagePath = array_get($file, 'path', array_get($file, 'file_path'));
+//
+//                if(empty($storagePath)){
+//                    throw new BadRequestException('No storage path provided for attachment stored in storage service - ' . $storageService);
+//                }
+//
+//                $result = ServiceManager::handleRequest($storageService, Verbs::GET, $storagePath);
+            } elseif(!empty($file)) {
+                if(!is_array($file)){
+                    $files = explode(',', $file);
+                } else {
+                    $files = $file;
+                }
+                try {
+                    foreach ($files as $k => $v) {
+                        $filePath = FileUtilities::importUrlFileToTemp(urldecode($v));
+                        $files[$k] = [
+                            'name'     => basename($v),
+                            'tmp_name' => $filePath
+                        ];
+                    }
+
+                    $file = (count($files) === 1)? $files[0] : $files;
+                } catch (\Exception $e){
+                    throw new BadRequestException('Failed to import attachment file from url. ' . $e->getMessage());
+                }
+            }
+        }
+
+        return $file;
+    }
+
+    /**
      * @return array
      * @throws BadRequestException
      * @throws NotFoundException
@@ -90,8 +139,12 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
     protected function handlePOST()
     {
         $data = $this->getPayloadData();
+        if(empty($data)){
+            $data = $this->request->input();
+        }
         $templateName = $this->request->getParameter('template', $this->request->getPayloadData('template'));
         $templateId = $this->request->getParameter('template_id', $this->request->getPayloadData('template_id'));
+        $data['attachment'] = $this->getAttachments();
         $templateData = [];
 
         if (!empty($templateName)) {
@@ -164,6 +217,7 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
                 $fromEmail = array_get($data, 'from_email');
                 $replyName = array_get($data, 'reply_to_name');
                 $replyEmail = array_get($data, 'reply_to_email');
+                $attachment = array_get($data, 'attachment');
 
                 if (empty($fromEmail)) {
                     $fromEmail = config('mail.from.address');
@@ -199,6 +253,19 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
                 if (!empty($subject)) {
                     Session::replaceLookups($subject);
                     $m->subject(static::applyDataToView($subject, $data));
+                }
+
+                if(!empty($attachment) && is_array($attachment)){
+                    if(isset($attachment['name'])){
+                        $attachment[] = $attachment;
+                    }
+                    foreach ($attachment as $att){
+                        $fileName = array_get($att, 'name');
+                        $filePath = array_get($att, 'tmp_name');
+                        if(is_file($filePath)) {
+                            $m->attachData(file_get_contents($filePath), $fileName);
+                        }
+                    }
                 }
 
                 if (!empty($bcc)) {
@@ -282,6 +349,13 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
                             'description' => 'Data containing name-value pairs used for provisioning emails.',
                             'schema'      => ['$ref' => '#/definitions/EmailRequest'],
                             'in'          => 'body',
+                            'required'    => false,
+                        ],
+                        [
+                            'name'        => 'attachment',
+                            'description' => 'Import file(s) from URL for attachment. This is also available in form-data post and in json payload data.',
+                            'type'        => 'string',
+                            'in'          => 'query',
                             'required'    => false,
                         ],
                     ],
@@ -373,6 +447,23 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
                     'reply_to_email' => [
                         'type'        => 'string',
                         'description' => 'Optional reply to email.',
+                    ],
+                    'attachment' => [
+                        'type' => 'array',
+                        'description' => 'File(s) to import from storage service for attachment',
+                        'items' => [
+                            'type' => 'object',
+                            'properties' => [
+                                'service' => [
+                                    'type' => 'string',
+                                    'description' => 'Name of the storage service to use.'
+                                ],
+                                'path' => [
+                                    'type' => 'string',
+                                    'description' => 'File path relative to the service.'
+                                ]
+                            ]
+                        ]
                     ],
                 ],
             ],
