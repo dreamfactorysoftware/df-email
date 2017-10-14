@@ -178,7 +178,7 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
                             throw new BadRequestException('No service name and file path provided in request.');
                         }
 
-                        if (Session::checkForAnyServicePermissions($service, $path)) {
+                        if (Session::checkServicePermission(Verbs::GET, $service, $path, Session::getRequestor(), false)) {
                             /** @var \DreamFactory\Core\Contracts\ServiceResponseInterface $result */
                             $result = ServiceManager::handleRequest(
                                 $service,
