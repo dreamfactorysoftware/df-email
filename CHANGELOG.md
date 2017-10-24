@@ -4,7 +4,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 ### Added
-- DF-1191 Added attachment support for email services
+- DF-1191 Added attachment support for email services and email templates
 
 ## [0.6.0] - 2017-08-17
 ### Changed

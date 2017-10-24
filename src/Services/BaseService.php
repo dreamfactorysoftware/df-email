@@ -96,19 +96,23 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
     /**
      * Gets uploaded file(s) for attachment.
      *
+     * @param null|string|array $path
+     *
      * @return array
      */
-    protected function getUploadedAttachment()
+    protected function getUploadedAttachment($path = null)
     {
         $attachment = [];
-        $file = $this->request->getFile('file', $this->request->getFile('attachment'));
+        $file = $this->request->getFile('file', $this->request->getFile('attachment', $path));
 
         if (is_array($file)) {
-            if (isset($file['tmp_name'])) {
+            if (isset($file['tmp_name'], $file['name'])) {
                 $attachment[] = new Attachment($file['tmp_name'], array_get($file, 'name'));
             } else {
                 foreach ($file as $f) {
-                    $attachment[] = new Attachment(array_get($f, 'tmp_name'), array_get($f, 'name'));
+                    if (isset($f['tmp_name'], $f['name'])) {
+                        $attachment[] = new Attachment(array_get($f, 'tmp_name'), array_get($f, 'name'));
+                    }
                 }
             }
         }
@@ -119,13 +123,15 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
     /**
      * Gets URL imported file(s) for attachment.
      *
+     * @param null|string $path
+     *
      * @return array
      * @throws \DreamFactory\Core\Exceptions\InternalServerErrorException
      */
-    protected function getUrlAttachment()
+    protected function getUrlAttachment($path = null)
     {
         $attachment = [];
-        $file = $this->request->input('import_url', $this->request->input('attachment'));
+        $file = $this->request->input('import_url', $this->request->input('attachment', $path));
 
         if (!empty($file)) {
             if (!is_array($file)) {
@@ -136,6 +142,7 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
             try {
                 foreach ($files as $f) {
                     if (is_string($f)) {
+                        Session::replaceLookups($f);
                         $fileURL = urldecode($f);
                         $filePath = FileUtilities::importUrlFileToTemp($fileURL);
                         $attachment[] = new Attachment($filePath, basename($fileURL));
@@ -153,13 +160,15 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
     /**
      * Gets file(s) stored in storage service(s) for attachment.
      *
+     * @param null|string|array $path
+     *
      * @return array
      * @throws \DreamFactory\Core\Exceptions\InternalServerErrorException
      */
-    protected function getServiceAttachment()
+    protected function getServiceAttachment($path = null)
     {
         $attachment = [];
-        $file = $this->request->input('import_url', $this->request->input('attachment'));
+        $file = $this->request->input('import_url', $this->request->input('attachment', $path));
 
         if (!empty($file) && is_array($file)) {
             if (isset($file['service'])) {
@@ -173,12 +182,15 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
                     if (is_array($f)) {
                         $service = array_get($f, 'service');
                         $path = array_get($f, 'path', array_get($f, 'file_path'));
+                        Session::replaceLookups($service);
+                        Session::replaceLookups($path);
 
                         if (empty($service) || empty($path)) {
                             throw new BadRequestException('No service name and file path provided in request.');
                         }
 
-                        if (Session::checkServicePermission(Verbs::GET, $service, $path, Session::getRequestor(), false)) {
+                        if (Session::checkServicePermission(Verbs::GET, $service, $path, Session::getRequestor(),
+                            false)) {
                             /** @var \DreamFactory\Core\Contracts\ServiceResponseInterface $result */
                             $result = ServiceManager::handleRequest(
                                 $service,
@@ -220,15 +232,17 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
     }
 
     /**
+     * @param null|string $path
+     *
      * @return array|mixed|string
      * @throws \DreamFactory\Core\Exceptions\BadRequestException
      */
-    protected function getAttachments()
+    protected function getAttachments($path = null)
     {
         return array_merge(
-            $this->getUploadedAttachment(),
-            $this->getUrlAttachment(),
-            $this->getServiceAttachment()
+            $this->getUploadedAttachment($path),
+            $this->getUrlAttachment($path),
+            $this->getServiceAttachment($path)
         );
     }
 
@@ -243,9 +257,8 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
         if (empty($data)) {
             $data = $this->request->input();
         }
-        $templateName = $this->request->getParameter('template', $this->request->getPayloadData('template'));
-        $templateId = $this->request->getParameter('template_id', $this->request->getPayloadData('template_id'));
-        $data['attachment'] = $this->getAttachments();
+        $templateName = $this->request->input('template');
+        $templateId = $this->request->input('template_id');
         $templateData = [];
 
         if (!empty($templateName)) {
@@ -272,6 +285,14 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
 
         $data = array_merge((array)array_get($templateData, 'defaults', []), $data);
         $data = array_merge($this->parameters, $templateData, $data);
+
+        // Get attachments from the http request.
+        $attachments = $this->getAttachments();
+        if (!empty($attachments)) {
+            $data['attachment'] = $attachments;
+        } elseif (isset($data['attachment'])) { // Attachment is set in template
+            $data['attachment'] = $this->getAttachments($data['attachment']);
+        }
 
         $text = array_get($data, 'body_text');
         $html = array_get($data, 'body_html');
@@ -567,7 +588,7 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
                     ],
                     'attachment'     => [
                         'type'        => 'array',
-                        'description' => 'File(s) to import from storage service for attachment',
+                        'description' => 'File(s) to import from storage service or URL for attachment',
                         'items'       => [
                             'type'       => 'object',
                             'properties' => [
