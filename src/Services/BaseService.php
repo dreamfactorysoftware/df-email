@@ -155,7 +155,7 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
         $count = $this->mailer->send(
             $view,
             $data,
-            function (Message $m) use ($data){
+            function (Message $m) use ($data) {
                 $to = array_get($data, 'to');
                 $cc = array_get($data, 'cc');
                 $bcc = array_get($data, 'bcc');
@@ -249,51 +249,34 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
         return $template->toArray();
     }
 
-    public static function getApiDocInfo($service)
+    protected function getApiDocPaths()
     {
-        $name = strtolower($service->name);
-        $capitalized = camelize($service->name);
-        $paths = [
-            '/' . $name => [
+        $capitalized = camelize($this->name);
+
+        return [
+            '/' => [
                 'post' => [
-                    'tags'        => [$name],
-                    'summary'     => 'send' .
-                        $capitalized .
-                        'Email() - Send an email created from posted data and/or a template.',
+                    'summary'     => 'send' . $capitalized . 'Email() - Send an email created from posted data and/or a template.',
                     'operationId' => 'send' . $capitalized . 'Email',
                     'parameters'  => [
                         [
                             'name'        => 'template',
                             'description' => 'Optional template name to base email on.',
-                            'type'        => 'string',
+                            'schema'      => ['type' => 'string'],
                             'in'          => 'query',
-                            'required'    => false,
                         ],
                         [
                             'name'        => 'template_id',
                             'description' => 'Optional template id to base email on.',
-                            'type'        => 'integer',
-                            'format'      => 'int32',
+                            'schema'      => ['type' => 'integer', 'format' => 'int32'],
                             'in'          => 'query',
-                            'required'    => false,
-                        ],
-                        [
-                            'name'        => 'data',
-                            'description' => 'Data containing name-value pairs used for provisioning emails.',
-                            'schema'      => ['$ref' => '#/definitions/EmailRequest'],
-                            'in'          => 'body',
-                            'required'    => false,
                         ],
                     ],
+                    'requestBody' => [
+                        '$ref' => '#/components/requestBodies/EmailRequest'
+                    ],
                     'responses'   => [
-                        '200'     => [
-                            'description' => 'Send Email Response',
-                            'schema'      => ['$ref' => '#/definitions/EmailResponse']
-                        ],
-                        'default' => [
-                            'description' => 'Error',
-                            'schema'      => ['$ref' => '#/definitions/Error']
-                        ]
+                        '200' => ['$ref' => '#/components/responses/EmailResponse']
                     ],
                     'description' =>
                         'If a template is not used with all required fields, then they must be included in the request. ' .
@@ -301,8 +284,45 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
                 ],
             ],
         ];
+    }
 
-        $definitions = [
+    protected function getApiDocRequests()
+    {
+        return [
+            'EmailRequest' => [
+                'description' => 'Email Request',
+                'content'     => [
+                    'application/json' => [
+                        'schema' => ['$ref' => '#/components/schemas/EmailRequest']
+                    ],
+                    'application/xml'  => [
+                        'schema' => ['$ref' => '#/components/schemas/EmailRequest']
+                    ],
+                ],
+            ],
+        ];
+    }
+
+    protected function getApiDocResponses()
+    {
+        return [
+            'EmailResponse' => [
+                'description' => 'Email Response',
+                'content'     => [
+                    'application/json' => [
+                        'schema' => ['$ref' => '#/components/schemas/EmailResponse']
+                    ],
+                    'application/xml'  => [
+                        'schema' => ['$ref' => '#/components/schemas/EmailResponse']
+                    ],
+                ],
+            ],
+        ];
+    }
+
+    protected function getApiDocSchemas()
+    {
+        return [
             'EmailResponse' => [
                 'type'       => 'object',
                 'properties' => [
@@ -329,21 +349,21 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
                         'type'        => 'array',
                         'description' => 'Required single or multiple receiver addresses.',
                         'items'       => [
-                            '$ref' => '#/definitions/EmailAddress',
+                            '$ref' => '#/components/schemas/EmailAddress',
                         ],
                     ],
                     'cc'             => [
                         'type'        => 'array',
                         'description' => 'Optional CC receiver addresses.',
                         'items'       => [
-                            '$ref' => '#/definitions/EmailAddress',
+                            '$ref' => '#/components/schemas/EmailAddress',
                         ],
                     ],
                     'bcc'            => [
                         'type'        => 'array',
                         'description' => 'Optional BCC receiver addresses.',
                         'items'       => [
-                            '$ref' => '#/definitions/EmailAddress',
+                            '$ref' => '#/components/schemas/EmailAddress',
                         ],
                     ],
                     'subject'        => [
@@ -390,7 +410,5 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
                 ],
             ],
         ];
-
-        return ['paths' => $paths, 'definitions' => $definitions];
     }
 }
