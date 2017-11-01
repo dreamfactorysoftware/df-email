@@ -479,9 +479,8 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
                         [
                             'name'        => 'attachment',
                             'description' => 'Import file(s) from URL for attachment. This is also available in form-data post and in json payload data.',
-                            'type'        => 'string',
+                            'schema'      => ['type'        => 'string'],
                             'in'          => 'query',
-                            'required'    => false,
                         ],
                     ],
                     'requestBody' => [
