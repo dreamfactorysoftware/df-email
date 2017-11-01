@@ -4,6 +4,7 @@ namespace DreamFactory\Core\Email\Services;
 
 use App;
 use DreamFactory\Core\Contracts\EmailServiceInterface;
+use DreamFactory\Core\Contracts\ServiceRequestInterface;
 use DreamFactory\Core\Email\Components\Attachment;
 use DreamFactory\Core\Email\Components\EmailUtilities;
 use DreamFactory\Core\Email\Components\Mailer as DfMailer;
@@ -103,7 +104,10 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
     protected function getUploadedAttachment($path = null)
     {
         $attachment = [];
-        $file = $this->request->getFile('file', $this->request->getFile('attachment', $path));
+        $file = $path;
+        if($this->request instanceof ServiceRequestInterface) {
+            $file = $this->request->getFile('file', $this->request->getFile('attachment', $path));
+        }
 
         if (is_array($file)) {
             if (isset($file['tmp_name'], $file['name'])) {
@@ -131,7 +135,10 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
     protected function getUrlAttachment($path = null)
     {
         $attachment = [];
-        $file = $this->request->input('import_url', $this->request->input('attachment', $path));
+        $file = $path;
+        if($this->request instanceof ServiceRequestInterface) {
+            $file = $this->request->input('import_url', $this->request->input('attachment', $path));
+        }
 
         if (!empty($file)) {
             if (!is_array($file)) {
@@ -168,7 +175,10 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
     protected function getServiceAttachment($path = null)
     {
         $attachment = [];
-        $file = $this->request->input('import_url', $this->request->input('attachment', $path));
+        $file = $path;
+        if($this->request instanceof ServiceRequestInterface) {
+            $file = $this->request->input('import_url', $this->request->input('attachment', $path));
+        }
 
         if (!empty($file) && is_array($file)) {
             if (isset($file['service'])) {
@@ -237,7 +247,7 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
      * @return array|mixed|string
      * @throws \DreamFactory\Core\Exceptions\BadRequestException
      */
-    protected function getAttachments($path = null)
+    public function getAttachments($path = null)
     {
         return array_merge(
             $this->getUploadedAttachment($path),
@@ -286,14 +296,6 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
         $data = array_merge((array)array_get($templateData, 'defaults', []), $data);
         $data = array_merge($this->parameters, $templateData, $data);
 
-        // Get attachments from the http request.
-        $attachments = $this->getAttachments();
-        if (!empty($attachments)) {
-            $data['attachment'] = $attachments;
-        } elseif (isset($data['attachment'])) { // Attachment is set in template
-            $data['attachment'] = $this->getAttachments($data['attachment']);
-        }
-
         $text = array_get($data, 'body_text');
         $html = array_get($data, 'body_html');
 
@@ -339,7 +341,13 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
                 $fromEmail = array_get($data, 'from_email');
                 $replyName = array_get($data, 'reply_to_name');
                 $replyEmail = array_get($data, 'reply_to_email');
-                $attachment = array_get($data, 'attachment');
+                // Look for any attachment in request data.
+                $attachment = $this->getAttachments();
+                // No attachment in request data. Attachment found in email template.
+                if(empty($attachment) && isset($data['attachment'])){
+                    // Get the attachment data from email template.
+                    $attachment = $this->getAttachments($data['attachment']);
+                }
 
                 if (empty($fromEmail)) {
                     $fromEmail = config('mail.from.address');
@@ -385,23 +393,6 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
                         if ($att instanceof Attachment) {
                             $m->attachData($att->getContent(), $att->getName());
                             $att->unlink();
-                        }
-                    }
-                }
-
-                if (!empty($attachment) && is_array($attachment)) {
-                    if (isset($attachment['name'])) {
-                        $attachments[] = $attachment;
-                    } else {
-                        $attachments = $attachment;
-                    }
-                    foreach ($attachments as $att) {
-                        $fileName = array_get($att, 'name');
-                        $filePath = array_get($att, 'tmp_name');
-                        if (is_file($filePath)) {
-                            $m->attachData(file_get_contents($filePath), $fileName);
-                            // Delete from local /tmp directory.
-                            @unlink($filePath);
                         }
                     }
                 }
