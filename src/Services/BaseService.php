@@ -105,7 +105,7 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
     {
         $attachment = [];
         $file = $path;
-        if($this->request instanceof ServiceRequestInterface) {
+        if ($this->request instanceof ServiceRequestInterface) {
             $file = $this->request->getFile('file', $this->request->getFile('attachment', $path));
         }
 
@@ -136,7 +136,7 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
     {
         $attachment = [];
         $file = $path;
-        if($this->request instanceof ServiceRequestInterface) {
+        if ($this->request instanceof ServiceRequestInterface) {
             $file = $this->request->input('import_url', $this->request->input('attachment', $path));
         }
 
@@ -176,7 +176,7 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
     {
         $attachment = [];
         $file = $path;
-        if($this->request instanceof ServiceRequestInterface) {
+        if ($this->request instanceof ServiceRequestInterface) {
             $file = $this->request->input('import_url', $this->request->input('attachment', $path));
         }
 
@@ -344,7 +344,7 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
                 // Look for any attachment in request data.
                 $attachment = $this->getAttachments();
                 // No attachment in request data. Attachment found in email template.
-                if(empty($attachment) && isset($data['attachment'])){
+                if (empty($attachment) && isset($data['attachment'])) {
                     // Get the attachment data from email template.
                     $attachment = $this->getAttachments($data['attachment']);
                 }
@@ -452,7 +452,10 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
         return [
             '/' => [
                 'post' => [
-                    'summary'     => 'send' . $capitalized . 'Email() - Send an email created from posted data and/or a template.',
+                    'summary'     => 'Send an email created from posted data and/or a template.',
+                    'description' =>
+                        'If a template is not used with all required fields, then they must be included in the request. ' .
+                        'If the \'from\' address is not provisioned in the service, then it must be included in the request.',
                     'operationId' => 'send' . $capitalized . 'Email',
                     'parameters'  => [
                         [
@@ -470,7 +473,7 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
                         [
                             'name'        => 'attachment',
                             'description' => 'Import file(s) from URL for attachment. This is also available in form-data post and in json payload data.',
-                            'schema'      => ['type'        => 'string'],
+                            'schema'      => ['type' => 'string'],
                             'in'          => 'query',
                         ],
                     ],
@@ -480,9 +483,6 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
                     'responses'   => [
                         '200' => ['$ref' => '#/components/responses/EmailResponse']
                     ],
-                    'description' =>
-                        'If a template is not used with all required fields, then they must be included in the request. ' .
-                        'If the \'from\' address is not provisioned in the service, then it must be included in the request.',
                 ],
             ],
         ];
