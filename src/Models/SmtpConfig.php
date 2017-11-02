@@ -21,6 +21,12 @@ class SmtpConfig extends BaseServiceConfigModel
         'parameters'
     ];
 
+    protected $casts = [
+        'service_id' => 'integer',
+        'port'       => 'integer',
+        'parameters' => 'array'
+    ];
+
     protected $encrypted = ['username', 'password'];
 
     protected $rules = ['host' => 'required'];
