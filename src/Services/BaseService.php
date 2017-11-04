@@ -4,17 +4,23 @@ namespace DreamFactory\Core\Email\Services;
 
 use App;
 use DreamFactory\Core\Contracts\EmailServiceInterface;
+use DreamFactory\Core\Contracts\ServiceRequestInterface;
+use DreamFactory\Core\Email\Components\Attachment;
 use DreamFactory\Core\Email\Components\EmailUtilities;
 use DreamFactory\Core\Email\Components\Mailer as DfMailer;
+use DreamFactory\Core\Enums\Verbs;
+use DreamFactory\Core\Exceptions\ForbiddenException;
 use DreamFactory\Core\Exceptions\NotFoundException;
 use DreamFactory\Core\Exceptions\BadRequestException;
 use DreamFactory\Core\Exceptions\InternalServerErrorException;
 use DreamFactory\Core\Models\EmailTemplate;
 use DreamFactory\Core\Services\BaseRestService;
+use DreamFactory\Core\Utility\FileUtilities;
 use DreamFactory\Core\Utility\Session;
 use Illuminate\Mail\Message;
 use Swift_Transport as SwiftTransport;
 use Swift_Mailer as SwiftMailer;
+use ServiceManager;
 
 abstract class BaseService extends BaseRestService implements EmailServiceInterface
 {
@@ -55,6 +61,9 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
      */
     abstract protected function setTransport($config);
 
+    /**
+     * @throws \DreamFactory\Core\Exceptions\InternalServerErrorException
+     */
     protected function setMailer()
     {
         if (!$this->transport instanceof SwiftTransport) {
@@ -65,6 +74,9 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
         $this->mailer = new DfMailer(App::make('view'), $swiftMailer, App::make('events'));
     }
 
+    /**
+     * @param $config
+     */
     protected function setParameters($config)
     {
         $this->parameters = (array)array_get($config, 'parameters', []);
@@ -83,6 +95,168 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
     }
 
     /**
+     * Gets uploaded file(s) for attachment.
+     *
+     * @param null|string|array $path
+     *
+     * @return array
+     */
+    protected function getUploadedAttachment($path = null)
+    {
+        $attachment = [];
+        $file = $path;
+        if ($this->request instanceof ServiceRequestInterface) {
+            $file = $this->request->getFile('file', $this->request->getFile('attachment', $path));
+        }
+
+        if (is_array($file)) {
+            if (isset($file['tmp_name'], $file['name'])) {
+                $attachment[] = new Attachment($file['tmp_name'], array_get($file, 'name'));
+            } else {
+                foreach ($file as $f) {
+                    if (isset($f['tmp_name'], $f['name'])) {
+                        $attachment[] = new Attachment(array_get($f, 'tmp_name'), array_get($f, 'name'));
+                    }
+                }
+            }
+        }
+
+        return $attachment;
+    }
+
+    /**
+     * Gets URL imported file(s) for attachment.
+     *
+     * @param null|string $path
+     *
+     * @return array
+     * @throws \DreamFactory\Core\Exceptions\InternalServerErrorException
+     */
+    protected function getUrlAttachment($path = null)
+    {
+        $attachment = [];
+        $file = $path;
+        if ($this->request instanceof ServiceRequestInterface) {
+            $file = $this->request->input('import_url', $this->request->input('attachment', $path));
+        }
+
+        if (!empty($file)) {
+            if (!is_array($file)) {
+                $files = explode(',', $file);
+            } else {
+                $files = $file;
+            }
+            try {
+                foreach ($files as $f) {
+                    if (is_string($f)) {
+                        Session::replaceLookups($f);
+                        $fileURL = urldecode($f);
+                        $filePath = FileUtilities::importUrlFileToTemp($fileURL);
+                        $attachment[] = new Attachment($filePath, basename($fileURL));
+                    }
+                }
+            } catch (\Exception $e) {
+                throw new InternalServerErrorException('Failed to import attachment file from url. ' .
+                    $e->getMessage());
+            }
+        }
+
+        return $attachment;
+    }
+
+    /**
+     * Gets file(s) stored in storage service(s) for attachment.
+     *
+     * @param null|string|array $path
+     *
+     * @return array
+     * @throws \DreamFactory\Core\Exceptions\InternalServerErrorException
+     */
+    protected function getServiceAttachment($path = null)
+    {
+        $attachment = [];
+        $file = $path;
+        if ($this->request instanceof ServiceRequestInterface) {
+            $file = $this->request->input('import_url', $this->request->input('attachment', $path));
+        }
+
+        if (!empty($file) && is_array($file)) {
+            if (isset($file['service'])) {
+                $files = [$file];
+            } else {
+                $files = $file;
+            }
+
+            try {
+                foreach ($files as $f) {
+                    if (is_array($f)) {
+                        $service = array_get($f, 'service');
+                        $path = array_get($f, 'path', array_get($f, 'file_path'));
+                        Session::replaceLookups($service);
+                        Session::replaceLookups($path);
+
+                        if (empty($service) || empty($path)) {
+                            throw new BadRequestException('No service name and file path provided in request.');
+                        }
+
+                        if (Session::checkServicePermission(Verbs::GET, $service, $path, Session::getRequestor(),
+                            false)) {
+                            /** @var \DreamFactory\Core\Contracts\ServiceResponseInterface $result */
+                            $result = ServiceManager::handleRequest(
+                                $service,
+                                Verbs::GET,
+                                $path,
+                                ['include_properties' => true, 'content' => true, 'is_base64' => true]
+                            );
+
+                            if ($result->getStatusCode() !== 200) {
+                                throw new InternalServerErrorException(
+                                    'Could to retrieve attachment file: ' .
+                                    $path .
+                                    ' from storage service: ' .
+                                    $service);
+                            }
+
+                            $content = $result->getContent();
+                            $content = base64_decode(array_get($content, 'content', ''));
+                            $fileName = basename($path);
+                            $filePath = sys_get_temp_dir() . '/' . $fileName;
+                            file_put_contents($filePath, $content);
+                            $attachment[] = new Attachment($filePath, $fileName);
+                        } else {
+                            throw new ForbiddenException(
+                                'You do not have enough privileges to access file: ' .
+                                $path .
+                                ' in service ' .
+                                $service);
+                        }
+                    }
+                }
+            } catch (\Exception $e) {
+                throw new InternalServerErrorException('Failed to get attachment file from storage service. ' .
+                    $e->getMessage());
+            }
+        }
+
+        return $attachment;
+    }
+
+    /**
+     * @param null|string $path
+     *
+     * @return array|mixed|string
+     * @throws \DreamFactory\Core\Exceptions\BadRequestException
+     */
+    public function getAttachments($path = null)
+    {
+        return array_merge(
+            $this->getUploadedAttachment($path),
+            $this->getUrlAttachment($path),
+            $this->getServiceAttachment($path)
+        );
+    }
+
+    /**
      * @return array
      * @throws BadRequestException
      * @throws NotFoundException
@@ -90,8 +264,11 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
     protected function handlePOST()
     {
         $data = $this->getPayloadData();
-        $templateName = $this->request->getParameter('template', $this->request->getPayloadData('template'));
-        $templateId = $this->request->getParameter('template_id', $this->request->getPayloadData('template_id'));
+        if (empty($data)) {
+            $data = $this->request->input();
+        }
+        $templateName = $this->request->input('template');
+        $templateId = $this->request->input('template_id');
         $templateData = [];
 
         if (!empty($templateName)) {
@@ -155,7 +332,7 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
         $count = $this->mailer->send(
             $view,
             $data,
-            function (Message $m) use ($data){
+            function (Message $m) use ($data) {
                 $to = array_get($data, 'to');
                 $cc = array_get($data, 'cc');
                 $bcc = array_get($data, 'bcc');
@@ -164,6 +341,13 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
                 $fromEmail = array_get($data, 'from_email');
                 $replyName = array_get($data, 'reply_to_name');
                 $replyEmail = array_get($data, 'reply_to_email');
+                // Look for any attachment in request data.
+                $attachment = $this->getAttachments();
+                // No attachment in request data. Attachment found in email template.
+                if (empty($attachment) && isset($data['attachment'])) {
+                    // Get the attachment data from email template.
+                    $attachment = $this->getAttachments($data['attachment']);
+                }
 
                 if (empty($fromEmail)) {
                     $fromEmail = config('mail.from.address');
@@ -199,6 +383,18 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
                 if (!empty($subject)) {
                     Session::replaceLookups($subject);
                     $m->subject(static::applyDataToView($subject, $data));
+                }
+
+                if (!empty($attachment)) {
+                    if (!is_array($attachment)) {
+                        $attachment = [$attachment];
+                    }
+                    foreach ($attachment as $att) {
+                        if ($att instanceof Attachment) {
+                            $m->attachData($att->getContent(), $att->getName());
+                            $att->unlink();
+                        }
+                    }
                 }
 
                 if (!empty($bcc)) {
@@ -249,60 +445,86 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
         return $template->toArray();
     }
 
-    public static function getApiDocInfo($service)
+    protected function getApiDocPaths()
     {
-        $name = strtolower($service->name);
-        $capitalized = camelize($service->name);
-        $paths = [
-            '/' . $name => [
+        $capitalized = camelize($this->name);
+
+        return [
+            '/' => [
                 'post' => [
-                    'tags'        => [$name],
-                    'summary'     => 'send' .
-                        $capitalized .
-                        'Email() - Send an email created from posted data and/or a template.',
+                    'summary'     => 'Send an email created from posted data and/or a template.',
+                    'description' =>
+                        'If a template is not used with all required fields, then they must be included in the request. ' .
+                        'If the \'from\' address is not provisioned in the service, then it must be included in the request.',
                     'operationId' => 'send' . $capitalized . 'Email',
                     'parameters'  => [
                         [
                             'name'        => 'template',
                             'description' => 'Optional template name to base email on.',
-                            'type'        => 'string',
+                            'schema'      => ['type' => 'string'],
                             'in'          => 'query',
-                            'required'    => false,
                         ],
                         [
                             'name'        => 'template_id',
                             'description' => 'Optional template id to base email on.',
-                            'type'        => 'integer',
-                            'format'      => 'int32',
+                            'schema'      => ['type' => 'integer', 'format' => 'int32'],
                             'in'          => 'query',
-                            'required'    => false,
                         ],
                         [
-                            'name'        => 'data',
-                            'description' => 'Data containing name-value pairs used for provisioning emails.',
-                            'schema'      => ['$ref' => '#/definitions/EmailRequest'],
-                            'in'          => 'body',
-                            'required'    => false,
+                            'name'        => 'attachment',
+                            'description' => 'Import file(s) from URL for attachment. This is also available in form-data post and in json payload data.',
+                            'schema'      => ['type' => 'string'],
+                            'in'          => 'query',
                         ],
+                    ],
+                    'requestBody' => [
+                        '$ref' => '#/components/requestBodies/EmailRequest'
                     ],
                     'responses'   => [
-                        '200'     => [
-                            'description' => 'Send Email Response',
-                            'schema'      => ['$ref' => '#/definitions/EmailResponse']
-                        ],
-                        'default' => [
-                            'description' => 'Error',
-                            'schema'      => ['$ref' => '#/definitions/Error']
-                        ]
+                        '200' => ['$ref' => '#/components/responses/EmailResponse']
                     ],
-                    'description' =>
-                        'If a template is not used with all required fields, then they must be included in the request. ' .
-                        'If the \'from\' address is not provisioned in the service, then it must be included in the request.',
                 ],
             ],
         ];
+    }
 
-        $definitions = [
+    protected function getApiDocRequests()
+    {
+        return [
+            'EmailRequest' => [
+                'description' => 'Email Request',
+                'content'     => [
+                    'application/json' => [
+                        'schema' => ['$ref' => '#/components/schemas/EmailRequest']
+                    ],
+                    'application/xml'  => [
+                        'schema' => ['$ref' => '#/components/schemas/EmailRequest']
+                    ],
+                ],
+            ],
+        ];
+    }
+
+    protected function getApiDocResponses()
+    {
+        return [
+            'EmailResponse' => [
+                'description' => 'Email Response',
+                'content'     => [
+                    'application/json' => [
+                        'schema' => ['$ref' => '#/components/schemas/EmailResponse']
+                    ],
+                    'application/xml'  => [
+                        'schema' => ['$ref' => '#/components/schemas/EmailResponse']
+                    ],
+                ],
+            ],
+        ];
+    }
+
+    protected function getApiDocSchemas()
+    {
+        return [
             'EmailResponse' => [
                 'type'       => 'object',
                 'properties' => [
@@ -329,21 +551,21 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
                         'type'        => 'array',
                         'description' => 'Required single or multiple receiver addresses.',
                         'items'       => [
-                            '$ref' => '#/definitions/EmailAddress',
+                            '$ref' => '#/components/schemas/EmailAddress',
                         ],
                     ],
                     'cc'             => [
                         'type'        => 'array',
                         'description' => 'Optional CC receiver addresses.',
                         'items'       => [
-                            '$ref' => '#/definitions/EmailAddress',
+                            '$ref' => '#/components/schemas/EmailAddress',
                         ],
                     ],
                     'bcc'            => [
                         'type'        => 'array',
                         'description' => 'Optional BCC receiver addresses.',
                         'items'       => [
-                            '$ref' => '#/definitions/EmailAddress',
+                            '$ref' => '#/components/schemas/EmailAddress',
                         ],
                     ],
                     'subject'        => [
@@ -374,6 +596,23 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
                         'type'        => 'string',
                         'description' => 'Optional reply to email.',
                     ],
+                    'attachment'     => [
+                        'type'        => 'array',
+                        'description' => 'File(s) to import from storage service or URL for attachment',
+                        'items'       => [
+                            'type'       => 'object',
+                            'properties' => [
+                                'service' => [
+                                    'type'        => 'string',
+                                    'description' => 'Name of the storage service to use.'
+                                ],
+                                'path'    => [
+                                    'type'        => 'string',
+                                    'description' => 'File path relative to the service.'
+                                ]
+                            ]
+                        ]
+                    ],
                 ],
             ],
             'EmailAddress'  => [
@@ -390,7 +629,5 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
                 ],
             ],
         ];
-
-        return ['paths' => $paths, 'definitions' => $definitions];
     }
 }
