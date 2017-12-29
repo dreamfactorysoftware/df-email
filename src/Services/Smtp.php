@@ -36,7 +36,7 @@ class Smtp extends BaseService
         if (empty($port)) {
             throw new InternalServerErrorException("Missing SMTP port. Check service configuration.");
         }
-        $transport = SmtpTransport::newInstance($host, $port);
+        $transport = new SmtpTransport($host, $port);
 
         if (!empty($encryption)) {
             $transport->setEncryption($encryption);

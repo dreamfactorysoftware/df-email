@@ -22,8 +22,14 @@
       "email": "leehicks@dreamfactory.com"
     }
   ],
+  "support":     {
+    "email":  "dspsupport@dreamfactory.com",
+    "source": "https://github.com/dreamfactorysoftware/df-email",
+    "issues": "https://github.com/dreamfactorysoftware/df-email/issues",
+    "wiki":   "https://wiki.dreamfactory.com"
+  },
   "require":     {
-    "dreamfactory/df-core": "~0.13.0",
+    "dreamfactory/df-core": "~0.14.0",
     "guzzlehttp/guzzle":    "~6.0"
   },
   "require-dev": {
@@ -36,7 +42,12 @@
   },
   "extra":       {
     "branch-alias": {
-      "dev-develop": "0.7.x-dev"
+      "dev-develop": "0.8.x-dev"
+    },
+    "laravel": {
+      "providers": [
+        "DreamFactory\\Core\\Email\\ServiceProvider"
+      ]
     }
   }
 }

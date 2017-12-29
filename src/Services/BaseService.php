@@ -43,6 +43,7 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
 
     /**
      * @param array $settings
+     * @throws InternalServerErrorException
      */
     public function __construct($settings)
     {
@@ -245,7 +246,7 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
      * @param null|string $path
      *
      * @return array|mixed|string
-     * @throws \DreamFactory\Core\Exceptions\BadRequestException
+     * @throws InternalServerErrorException
      */
     public function getAttachments($path = null)
     {

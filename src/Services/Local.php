@@ -34,9 +34,9 @@ class Local extends BaseService
     public static function getTransport($command)
     {
         if (empty($command)) {
-            return SendmailTransport::newInstance();
+            return new SendmailTransport();
         }
 
-        return SendmailTransport::newInstance($command);
+        return new SendmailTransport($command);
     }
 }
