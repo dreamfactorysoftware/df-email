@@ -15,7 +15,7 @@ For more information, see the [full platform repository](https://github.com/drea
 Edit your project’s composer.json to require the following package.
 
 	“require”:{
-		"dreamfactory/df-email": "~0.7.0"
+		"dreamfactory/df-email": "~0.8.0"
 	}
 
 Save your composer.json and do a "composer update" to install the package.
