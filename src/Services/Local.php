@@ -33,6 +33,10 @@ class Local extends BaseService
      */
     public static function getTransport($command)
     {
+        if (empty($command) && !empty(env('SENDMAIL_DEFAULT_COMMAND'))) {
+            $command = env('SENDMAIL_DEFAULT_COMMAND');
+        }
+
         if (empty($command)) {
             return new SendmailTransport();
         }
