@@ -12,23 +12,24 @@ class MailGun extends BaseService
     {
         $domain = array_get($config, 'domain');
         $key = array_get($config, 'key');
+        $regionEndpoint = array_get($config, 'region_endpoint');
 
-        $this->transport = static::getTransport($domain, $key);
+        $this->transport = static::getTransport($domain, $key, $regionEndpoint);
     }
 
     /**
      * @param $domain
      * @param $key
-     *
+     * @param $regionEndpoint
      * @return \Illuminate\Mail\Transport\MailgunTransport
-     * @throws \DreamFactory\Core\Exceptions\InternalServerErrorException
+     * @throws InternalServerErrorException
      */
-    public static function getTransport($domain, $key)
+    public static function getTransport($domain, $key, $regionEndpoint)
     {
         if (empty($domain) || empty($key)) {
             throw new InternalServerErrorException('Missing one or more configuration for MailGun service.');
         }
 
-        return new MailgunTransport(new Client(), $key, $domain);
+        return new MailgunTransport(new Client(), $key, $domain, $regionEndpoint);
     }
 }
