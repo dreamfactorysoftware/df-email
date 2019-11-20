@@ -15,6 +15,7 @@ class CloudEmailConfig extends BaseServiceConfigModel
         'service_id',
         'domain',
         'key',
+        'region_endpoint',
         'parameters'
     ];
 

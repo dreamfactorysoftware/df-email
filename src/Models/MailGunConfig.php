@@ -26,6 +26,16 @@ class MailGunConfig extends CloudEmailConfig
                 $schema['label'] = 'API Key';
                 $schema['description'] = 'Mailgun service API Key.';
                 break;
+            case 'region_endpoint':
+                $schema['type'] = 'picklist';
+                $schema['values'] = [
+                    ['label' => 'United States', 'name' => 'api.mailgun.net'],
+                    ['label' => 'Europe', 'name' => 'api.eu.mailgun.net'],
+                ];
+                $schema['default'] = 'api.mailgun.net';
+                $schema['description'] = 'Select Mailgun service REST API Region Endpoint. 
+                According to <a href="https://documentation.mailgun.com/en/latest/api-intro.html#mailgun-regions">Mailgun documentation</a>.';
+                break;
         }
     }
 }
