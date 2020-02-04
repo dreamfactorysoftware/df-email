@@ -68,7 +68,7 @@ class CreateEmailTables extends Migration
 
         //Email service config table
         Schema::dropIfExists('cloud_email_config');
-        Schema::dropIfExists('smtp_email_config');
+        Schema::dropIfExists('smtp_config');
         //Email service parameters config table
         Schema::dropIfExists('email_parameters_config');
     }
