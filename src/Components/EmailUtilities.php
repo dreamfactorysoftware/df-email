@@ -3,6 +3,7 @@
 namespace DreamFactory\Core\Email\Components;
 
 use DreamFactory\Core\Exceptions\BadRequestException;
+use \Illuminate\Support\Arr;
 
 trait EmailUtilities
 {
@@ -14,7 +15,7 @@ trait EmailUtilities
                 $out = array();
                 foreach ($emails as $info) {
                     if (is_array($info)) {
-                        $email = array_get($info, 'email');
+                        $email = Arr::get($info, 'email');
                         $email = filter_var($email, FILTER_SANITIZE_EMAIL);
                         if (false === filter_var($email, FILTER_VALIDATE_EMAIL)) {
                             throw new BadRequestException("Invalid email - '$email'.");
@@ -22,7 +23,7 @@ trait EmailUtilities
                         if (empty($email)) {
                             throw new BadRequestException('Email can not be empty.');
                         }
-                        $name = array_get($info, 'name');
+                        $name = Arr::get($info, 'name');
                         if (empty($name)) {
                             $out[] = $email;
                         } else {
@@ -48,7 +49,7 @@ trait EmailUtilities
                 }
             } else // single pair
             {
-                $email = array_get($emails, 'email');
+                $email = Arr::get($emails, 'email');
                 $email = filter_var($email, FILTER_SANITIZE_EMAIL);
                 if (false === filter_var($email, FILTER_VALIDATE_EMAIL)) {
                     throw new BadRequestException("Invalid email - '$email'.");
@@ -56,7 +57,7 @@ trait EmailUtilities
                 if (empty($email)) {
                     throw new BadRequestException('Email can not be empty.');
                 }
-                $name = array_get($emails, 'name');
+                $name = Arr::get($emails, 'name');
                 if (empty($name)) {
                     $out = $email;
                 } else {

@@ -3,16 +3,16 @@
 namespace DreamFactory\Core\Email\Services;
 
 use DreamFactory\Core\Exceptions\InternalServerErrorException;
-use GuzzleHttp\Client;
-use Illuminate\Mail\Transport\MailgunTransport;
+use Symfony\Component\Mailer\Bridge\Mailgun\Transport\MailgunApiTransport as MailgunTransport;
+use \Illuminate\Support\Arr;
 
 class MailGun extends BaseService
 {
-    protected function setTransport($config)
+    protected function setTransport(array $config)
     {
-        $domain = array_get($config, 'domain');
-        $key = array_get($config, 'key');
-        $regionEndpoint = array_get($config, 'region_endpoint');
+        $domain = Arr::get($config, 'domain');
+        $key = Arr::get($config, 'key');
+        $regionEndpoint = Arr::get($config, 'region_endpoint');
 
         $this->transport = static::getTransport($domain, $key, $regionEndpoint);
     }
@@ -21,7 +21,7 @@ class MailGun extends BaseService
      * @param $domain
      * @param $key
      * @param $regionEndpoint
-     * @return \Illuminate\Mail\Transport\MailgunTransport
+     * @return MailgunTransport
      * @throws InternalServerErrorException
      */
     public static function getTransport($domain, $key, $regionEndpoint)
@@ -30,6 +30,6 @@ class MailGun extends BaseService
             throw new InternalServerErrorException('Missing one or more configuration for MailGun service.');
         }
 
-        return new MailgunTransport(new Client(), $key, $domain, $regionEndpoint);
+        return new MailgunTransport($key, $domain, $regionEndpoint);
     }
 }
