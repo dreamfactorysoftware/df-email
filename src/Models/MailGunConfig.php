@@ -29,10 +29,10 @@ class MailGunConfig extends CloudEmailConfig
             case 'region_endpoint':
                 $schema['type'] = 'picklist';
                 $schema['values'] = [
-                    ['label' => 'United States', 'name' => 'api.mailgun.net'],
-                    ['label' => 'Europe', 'name' => 'api.eu.mailgun.net'],
+                    ['label' => 'United States', 'name' => ''],
+                    ['label' => 'Europe', 'name' => 'eu'],
                 ];
-                $schema['default'] = 'api.mailgun.net';
+                $schema['default'] = '';
                 $schema['description'] = 'Select Mailgun service REST API Region Endpoint. 
                 According to <a href="https://documentation.mailgun.com/en/latest/api-intro.html#mailgun-regions">Mailgun documentation</a>.';
                 break;

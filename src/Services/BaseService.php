@@ -5,6 +5,7 @@ namespace DreamFactory\Core\Email\Services;
 use App;
 use DreamFactory\Core\Contracts\EmailServiceInterface;
 use DreamFactory\Core\Contracts\ServiceRequestInterface;
+use DreamFactory\Core\Contracts\ServiceResponseInterface;
 use DreamFactory\Core\Email\Components\Attachment;
 use DreamFactory\Core\Email\Components\EmailUtilities;
 use DreamFactory\Core\Email\Components\Mailer as DfMailer;
@@ -17,92 +18,68 @@ use DreamFactory\Core\Models\EmailTemplate;
 use DreamFactory\Core\Services\BaseRestService;
 use DreamFactory\Core\Utility\FileUtilities;
 use DreamFactory\Core\Utility\Session;
+use Illuminate\Mail\Mailer;
 use Illuminate\Mail\Message;
-use Swift_Transport as SwiftTransport;
-use Swift_Mailer as SwiftMailer;
+use Symfony\Component\Mailer\Transport\TransportInterface as SymfonyTransport;
+use Symfony\Component\Mailer\Mailer as SymfonyMailer;
 use ServiceManager;
+use \Illuminate\Support\Arr;
 
 abstract class BaseService extends BaseRestService implements EmailServiceInterface
 {
     use EmailUtilities;
 
-    /**
-     * @var SwiftTransport
-     */
-    protected $transport;
+    protected SymfonyTransport $transport;
+
+    protected Mailer $mailer;
+
+    protected array $parameters;
 
     /**
-     * @var \Illuminate\Mail\Mailer;
-     */
-    protected $mailer;
-
-    /**
-     * @var array;
-     */
-    protected $parameters;
-
-    /**
-     * @param array $settings
      * @throws InternalServerErrorException
      */
-    public function __construct($settings)
+    public function __construct(array $settings)
     {
         parent::__construct($settings);
 
-        $config = (array_get($settings, 'config', [])) ?: [];
+        $config = (Arr::get($settings, 'config', [])) ?: [];
         $this->setParameters($config);
         $this->setTransport($config);
         $this->setMailer();
     }
 
-    /**
-     * Sets the email transport layer based on configuration.
-     *
-     * @param array $config
-     */
-    abstract protected function setTransport($config);
+    abstract protected function setTransport(array $config);
 
     /**
-     * @throws \DreamFactory\Core\Exceptions\InternalServerErrorException
+     * @throws InternalServerErrorException
      */
     protected function setMailer()
     {
-        if (!$this->transport instanceof SwiftTransport) {
+        if (!$this->transport instanceof SymfonyTransport) {
             throw new InternalServerErrorException('Invalid Email Transport.');
         }
 
-        $swiftMailer = new SwiftMailer($this->transport);
-        $this->mailer = new DfMailer(App::make('view'), $swiftMailer, App::make('events'));
+        $this->mailer = new DfMailer($this->name, App::make('view'), $this->transport, App::make('events'));
     }
 
-    /**
-     * @param $config
-     */
     protected function setParameters($config)
     {
-        $this->parameters = (array)array_get($config, 'parameters', []);
+        $this->parameters = (array)Arr::get($config, 'parameters', []);
 
         foreach ($this->parameters as $params) {
-            $this->parameters[$params['name']] = array_get($params, 'value');
+            $this->parameters[$params['name']] = Arr::get($params, 'value');
         }
     }
 
     /**
      * {@inheritdoc}
      */
-    protected function handleGET()
+    protected function handleGET(): bool
     {
         return false;
     }
 
-    /**
-     * Gets uploaded file(s) for attachment.
-     *
-     * @param null|string|array $path
-     *
-     * @return array
-     */
-    protected function getUploadedAttachment($path = null)
+    protected function getUploadedAttachment(array|string $path = null): array
     {
         $attachment = [];
         $file = $path;
@@ -112,11 +89,11 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
 
         if (is_array($file)) {
             if (isset($file['tmp_name'], $file['name'])) {
-                $attachment[] = new Attachment($file['tmp_name'], array_get($file, 'name'));
+                $attachment[] = new Attachment($file['tmp_name'], Arr::get($file, 'name'));
             } else {
                 foreach ($file as $f) {
                     if (isset($f['tmp_name'], $f['name'])) {
-                        $attachment[] = new Attachment(array_get($f, 'tmp_name'), array_get($f, 'name'));
+                        $attachment[] = new Attachment(Arr::get($f, 'tmp_name'), Arr::get($f, 'name'));
                     }
                 }
             }
@@ -126,14 +103,9 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
     }
 
     /**
-     * Gets URL imported file(s) for attachment.
-     *
-     * @param null|string $path
-     *
-     * @return array
-     * @throws \DreamFactory\Core\Exceptions\InternalServerErrorException
+     * @throws InternalServerErrorException
      */
-    protected function getUrlAttachment($path = null)
+    protected function getUrlAttachment( $path = null): array
     {
         $attachment = [];
         $file = $path;
@@ -167,13 +139,9 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
 
     /**
      * Gets file(s) stored in storage service(s) for attachment.
-     *
-     * @param null|string|array $path
-     *
-     * @return array
-     * @throws \DreamFactory\Core\Exceptions\InternalServerErrorException
+     * @throws InternalServerErrorException
      */
-    protected function getServiceAttachment($path = null)
+    protected function getServiceAttachment(array|string $path = null): array
     {
         $attachment = [];
         $file = $path;
@@ -191,8 +159,8 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
             try {
                 foreach ($files as $f) {
                     if (is_array($f)) {
-                        $service = array_get($f, 'service');
-                        $path = array_get($f, 'path', array_get($f, 'file_path'));
+                        $service = Arr::get($f, 'service');
+                        $path = Arr::get($f, 'path', Arr::get($f, 'file_path'));
                         Session::replaceLookups($service);
                         Session::replaceLookups($path);
 
@@ -202,7 +170,7 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
 
                         if (Session::checkServicePermission(Verbs::GET, $service, $path, Session::getRequestor(),
                             false)) {
-                            /** @var \DreamFactory\Core\Contracts\ServiceResponseInterface $result */
+                            /** @var ServiceResponseInterface $result */
                             $result = ServiceManager::handleRequest(
                                 $service,
                                 Verbs::GET,
@@ -219,7 +187,7 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
                             }
 
                             $content = $result->getContent();
-                            $content = base64_decode(array_get($content, 'content', ''));
+                            $content = base64_decode(Arr::get($content, 'content', ''));
                             $fileName = basename($path);
                             $filePath = sys_get_temp_dir() . '/' . $fileName;
                             file_put_contents($filePath, $content);
@@ -243,12 +211,9 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
     }
 
     /**
-     * @param null|string $path
-     *
-     * @return array|mixed|string
      * @throws InternalServerErrorException
      */
-    public function getAttachments($path = null)
+    public function getAttachments($path = null): array
     {
         return array_merge(
             $this->getUploadedAttachment($path),
@@ -258,11 +223,10 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
     }
 
     /**
-     * @return array
      * @throws BadRequestException
      * @throws NotFoundException
      */
-    protected function handlePOST()
+    protected function handlePOST(): array
     {
         $data = $this->getPayloadData();
         if (empty($data)) {
@@ -294,11 +258,11 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
             throw new BadRequestException('No valid data in request.');
         }
 
-        $data = array_merge((array)array_get($templateData, 'defaults', []), $data);
+        $data = array_merge((array)Arr::get($templateData, 'defaults', []), $data);
         $data = array_merge($this->parameters, $templateData, $data);
 
-        $text = array_get($data, 'body_text');
-        $html = array_get($data, 'body_html');
+        $text = Arr::get($data, 'body_text');
+        $html = Arr::get($data, 'body_html');
 
         $count = $this->sendEmail($data, $text, $html);
 
@@ -312,12 +276,6 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
 
     /**
      * Sends out emails.
-     *
-     * @param array $data
-     * @param null  $textView
-     * @param null  $htmlView
-     *
-     * @return mixed
      */
     public function sendEmail($data, $textView = null, $htmlView = null)
     {
@@ -329,19 +287,18 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
             'text' => $textView
         ];
 
-        /** @noinspection PhpVoidFunctionResultUsedInspection */
-        $count = $this->mailer->send(
+        return $this->mailer->send(
             $view,
             $data,
             function (Message $m) use ($data) {
-                $to = array_get($data, 'to');
-                $cc = array_get($data, 'cc');
-                $bcc = array_get($data, 'bcc');
-                $subject = array_get($data, 'subject');
-                $fromName = array_get($data, 'from_name');
-                $fromEmail = array_get($data, 'from_email');
-                $replyName = array_get($data, 'reply_to_name');
-                $replyEmail = array_get($data, 'reply_to_email');
+                $to = Arr::get($data, 'to');
+                $cc = Arr::get($data, 'cc');
+                $bcc = Arr::get($data, 'bcc');
+                $subject = Arr::get($data, 'subject');
+                $fromName = Arr::get($data, 'from_name');
+                $fromEmail = Arr::get($data, 'from_email');
+                $replyName = Arr::get($data, 'reply_to_name');
+                $replyEmail = Arr::get($data, 'reply_to_email');
                 // Look for any attachment in request data.
                 $attachment = $this->getAttachments();
                 // No attachment in request data. Attachment found in email template.
@@ -406,18 +363,12 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
                 }
             }
         );
-
-        return $count;
     }
 
     /**
-     * @param $name
-     *
      * @throws NotFoundException
-     *
-     * @return array
      */
-    public static function getTemplateDataByName($name)
+    public static function getTemplateDataByName($name): array
     {
         // find template in system db
         $template = EmailTemplate::whereName($name)->first();
@@ -429,13 +380,9 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
     }
 
     /**
-     * @param $id
-     *
      * @throws NotFoundException
-     *
-     * @return array
      */
-    public static function getTemplateDataById($id)
+    public static function getTemplateDataById($id): array
     {
         // find template in system db
         $template = EmailTemplate::whereId($id)->first();
@@ -446,7 +393,7 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
         return $template->toArray();
     }
 
-    protected function getApiDocPaths()
+    protected function getApiDocPaths(): array
     {
         $capitalized = camelize($this->name);
 
@@ -489,7 +436,7 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
         ];
     }
 
-    protected function getApiDocRequests()
+    protected function getApiDocRequests(): array
     {
         return [
             'EmailRequest' => [
@@ -506,7 +453,7 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
         ];
     }
 
-    protected function getApiDocResponses()
+    protected function getApiDocResponses(): array
     {
         return [
             'EmailResponse' => [
@@ -523,7 +470,7 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
         ];
     }
 
-    protected function getApiDocSchemas()
+    protected function getApiDocSchemas(): array
     {
         return [
             'EmailResponse' => [

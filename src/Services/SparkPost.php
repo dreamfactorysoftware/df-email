@@ -5,13 +5,14 @@ namespace DreamFactory\Core\Email\Services;
 use DreamFactory\Core\Exceptions\InternalServerErrorException;
 use GuzzleHttp\Client;
 use Illuminate\Mail\Transport\SparkPostTransport;
+use \Illuminate\Support\Arr;
 
 class SparkPost extends BaseService
 {
-    protected function setTransport($config)
+    protected function setTransport(array $config)
     {
-        $key = array_get($config, 'key');
-        $options = (array)array_get($config, 'options');
+        $key = Arr::get($config, 'key');
+        $options = (array)Arr::get($config, 'options');
         $this->transport = static::getTransport($key, $options);
     }
 

@@ -2,17 +2,18 @@
 
 namespace DreamFactory\Core\Email\Services;
 
-use Swift_SendmailTransport as SendmailTransport;
+use Symfony\Component\Mailer\Transport\SendmailTransport as SendmailTransport;
 use Config;
+use \Illuminate\Support\Arr;
 
 class Local extends BaseService
 {
     /**
      * {@inheritdoc}
      */
-    protected function setTransport($config)
+    protected function setTransport(array $config)
     {
-        $command = array_get($config, 'command');
+        $command = Arr::get($config, 'command');
         // old usage of mail config and env may be set to smtp
         if (empty($command) && ('smtp' == Config::get('mail.driver'))) {
             $host = Config::get('mail.host');

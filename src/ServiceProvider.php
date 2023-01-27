@@ -57,30 +57,6 @@ class ServiceProvider extends \Illuminate\Support\ServiceProvider
                             return new MailGun($config);
                         },
                     ]));
-            $df->addType(
-                new ServiceType(
-                    [
-                        'name'            => 'mandrill_email',
-                        'label'           => 'Mandrill',
-                        'description'     => 'Mandrill email service',
-                        'group'           => ServiceTypeGroups::EMAIL,
-                        'config_handler'  => MandrillConfig::class,
-                        'factory'         => function ($config) {
-                            return new Mandrill($config);
-                        },
-                    ]));
-            $df->addType(
-                new ServiceType(
-                    [
-                        'name'            => 'sparkpost_email',
-                        'label'           => 'SparkPost',
-                        'description'     => 'SparkPost email service',
-                        'group'           => ServiceTypeGroups::EMAIL,
-                        'config_handler'  => SparkpostConfig::class,
-                        'factory'         => function ($config) {
-                            return new SparkPost($config);
-                        },
-                    ]));
         });
     }
 

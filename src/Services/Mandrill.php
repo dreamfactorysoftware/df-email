@@ -5,12 +5,13 @@ namespace DreamFactory\Core\Email\Services;
 use DreamFactory\Core\Exceptions\InternalServerErrorException;
 use GuzzleHttp\Client;
 use Illuminate\Mail\Transport\MandrillTransport;
+use \Illuminate\Support\Arr;
 
 class Mandrill extends BaseService
 {
-    protected function setTransport($config)
+    protected function setTransport(array $config)
     {
-        $key = array_get($config, 'key');
+        $key = Arr::get($config, 'key');
         $this->transport = static::getTransport($key);
     }
 

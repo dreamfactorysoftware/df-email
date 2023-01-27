@@ -3,17 +3,18 @@
 namespace DreamFactory\Core\Email\Services;
 
 use DreamFactory\Core\Exceptions\InternalServerErrorException;
-use Swift_SmtpTransport as SmtpTransport;
+use Symfony\Component\Mailer\Transport\Smtp\EsmtpTransport as SmtpTransport;
+use \Illuminate\Support\Arr;
 
 class Smtp extends BaseService
 {
-    protected function setTransport($config)
+    protected function setTransport(array $config)
     {
-        $host = array_get($config, 'host');
-        $port = array_get($config, 'port');
-        $encryption = array_get($config, 'encryption');
-        $username = array_get($config, 'username');
-        $password = array_get($config, 'password');
+        $host = Arr::get($config, 'host');
+        $port = Arr::get($config, 'port');
+        $encryption = Arr::get($config, 'encryption');
+        $username = Arr::get($config, 'username');
+        $password = Arr::get($config, 'password');
 
         $this->transport = static::getTransport($host, $port, $encryption, $username, $password);
     }
@@ -25,10 +26,9 @@ class Smtp extends BaseService
      * @param $username
      * @param $password
      *
-     * @return \Swift_SmtpTransport
-     * @throws \DreamFactory\Core\Exceptions\InternalServerErrorException
+     * @throws InternalServerErrorException
      */
-    public static function getTransport($host, $port, $encryption, $username, $password)
+    public static function getTransport($host, $port, $encryption, $username, $password): SmtpTransport
     {
         if (empty($host)) {
             throw new InternalServerErrorException("Missing SMTP host. Check service configuration.");
@@ -36,11 +36,7 @@ class Smtp extends BaseService
         if (empty($port)) {
             throw new InternalServerErrorException("Missing SMTP port. Check service configuration.");
         }
-        $transport = new SmtpTransport($host, $port);
-
-        if (!empty($encryption)) {
-            $transport->setEncryption($encryption);
-        }
+        $transport = new SmtpTransport($host, $port, boolval($encryption));
 
         if (!empty($username) && !empty($password)) {
             $transport->setUsername($username);
