@@ -1,0 +1,116 @@
+repo_name: dreamfactorysoftware/df-email
+report_id: f1ecfa8ada5a5f86b1d2c386d9095cf9
+repo_type: Public
+timestamp: '2023-12-06T22:37:42+00:00'
+requested_by: daniilly
+provider: github
+branch: master
+detected_tools_count: 9
+tools:
+- name: PHP
+  description: A popular general-purpose scripting language that is especially suited
+    to web development
+  website_url: http://www.php.net/
+  open_source: true
+  hosted_saas: false
+  category: Languages & Frameworks
+  sub_category: Languages
+  image_url: https://img.stackshare.io/service/991/hwUcGZ41_400x400.jpg
+  detection_source: Repo Metadata
+- name: Guzzle
+  description: PHP HTTP client that makes it easy to send HTTP requests and trivial
+    to integrate with web services
+  website_url: http://guzzlephp.org/
+  license: MIT
+  open_source: true
+  hosted_saas: false
+  category: Languages & Frameworks
+  sub_category: Microframeworks (Backend)
+  image_url: https://img.stackshare.io/service/2350/638632.png
+  detection_source: composer.json
+  last_updated_by: Daniil Lytvyn
+  last_updated_on: 2023-01-27 15:03:01.000000000 Z
+- name: Symfony
+  description: A PHP full-stack web framework
+  website_url: http://symfony.com/
+  license: MIT
+  open_source: true
+  hosted_saas: false
+  category: Languages & Frameworks
+  sub_category: Frameworks (Full Stack)
+  image_url: https://img.stackshare.io/service/1197/logosf_positif_03_icon.png
+  detection_source: composer.json
+  last_updated_by: Daniil Lytvyn
+  last_updated_on: 2023-01-27 15:03:01.000000000 Z
+- name: Git
+  description: Fast, scalable, distributed revision control system
+  website_url: http://git-scm.com/
+  open_source: true
+  hosted_saas: false
+  category: Build, Test, Deploy
+  sub_category: Version Control System
+  image_url: https://img.stackshare.io/service/1046/git.png
+  detection_source: Repo Metadata
+- name: PHPUnit
+  description: Testing framework for PHP
+  website_url: https://phpunit.de/
+  license: BSD-3-Clause
+  open_source: true
+  hosted_saas: false
+  category: Build, Test, Deploy
+  sub_category: Testing Frameworks
+  image_url: https://img.stackshare.io/service/1616/1_WsEnddd5Y4EgEHsT054kUQ.jpeg
+  detection_source: composer.json
+  last_updated_by: Lee Hicks
+  last_updated_on: 2016-12-02 15:29:13.000000000 Z
+- name: guzzlehttp/guzzle
+  description: Guzzle is a PHP HTTP client library
+  package_url: https://packagist.org/guzzlehttp/guzzle
+  version: '7.2'
+  open_source: false
+  hosted_saas: false
+  category: Build, Test, Deploy
+  sub_category: Package Managers
+  image_url: https://img.stackshare.io/package/packagist/image.png
+  detection_source_url: github.com/dreamfactorysoftware/df-email/blob/master/composer.json
+  detection_source: composer.json
+  last_updated_by: Daniil Lytvyn
+  last_updated_on: 2023-01-27 15:03:01.000000000 Z
+- name: phpunit/phpunit
+  description: The PHP Unit Testing framework
+  package_url: https://packagist.org/phpunit/phpunit
+  open_source: false
+  hosted_saas: false
+  category: Build, Test, Deploy
+  sub_category: Package Managers
+  image_url: https://img.stackshare.io/package/packagist/image.png
+  detection_source: composer.json
+  last_updated_by: Lee Hicks
+  last_updated_on: 2016-12-02 15:29:13.000000000 Z
+- name: symfony/http-client
+  description: Provides powerful methods to fetch HTTP resources synchronously or
+    asynchronously
+  package_url: https://packagist.org/symfony/http-client
+  version: 6.1.7
+  open_source: false
+  hosted_saas: false
+  category: Build, Test, Deploy
+  sub_category: Package Managers
+  image_url: https://img.stackshare.io/package/packagist/image.png
+  detection_source_url: github.com/dreamfactorysoftware/df-email/blob/master/composer.json
+  detection_source: composer.json
+  last_updated_by: Daniil Lytvyn
+  last_updated_on: 2023-01-27 15:03:01.000000000 Z
+- name: symfony/mailer
+  description: Helps sending emails
+  package_url: https://packagist.org/symfony/mailer
+  version: 6.1.7
+  open_source: false
+  hosted_saas: false
+  category: Build, Test, Deploy
+  sub_category: Package Managers
+  image_url: https://img.stackshare.io/package/packagist/image.png
+  detection_source_url: github.com/dreamfactorysoftware/df-email/blob/master/composer.json
+  detection_source: composer.json
+  last_updated_by: Daniil Lytvyn
+  last_updated_on: 2023-01-27 15:03:01.000000000 Z
