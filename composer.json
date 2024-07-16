@@ -33,7 +33,6 @@
   "require":     {
     "dreamfactory/df-core": "~1.0",
     "guzzlehttp/guzzle": "~7.2",
-    "symfony/mailer": "~6.1.7",
     "symfony/mailgun-mailer": "~6.1.0",
     "symfony/http-client": "^6.4"
   },
