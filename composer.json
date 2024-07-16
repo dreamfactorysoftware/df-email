@@ -31,7 +31,7 @@
   "minimum-stability": "dev",
   "prefer-stable":     true,
   "require":     {
-    "dreamfactory/df-core": "dev-laravel-11 as 1.0.0",
+    "dreamfactory/df-core": "dev-laravel-11 as 1.0.3",
     "guzzlehttp/guzzle": "~7.2",
     "symfony/mailgun-mailer": "~6.1.0",
     "symfony/mailer": "^7.2",
