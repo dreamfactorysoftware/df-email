@@ -23,6 +23,13 @@ class Local extends BaseService
             $password = Config::get('mail.password');
             $this->transport = Smtp::getTransport($host, $port, $encryption, $username, $password);
         } else {
+            $disallowedCommands = ['rm', 'sudo', 'sh', 'bash', 'fsockopen', 'exec', 'system', 'popen', 'proc_open', 'passthru', 'curl', 'wget'];
+
+            foreach ($disallowedCommands as $disallowed) {
+                if (strpos($command, $disallowed) !== false) {
+                    throw new InternalServerErrorException('Command "' . $command . '" is not allowed.');
+                }
+            }
             $this->transport = static::getTransport($command);
         }
     }
