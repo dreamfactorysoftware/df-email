@@ -41,6 +41,17 @@ class CreateEmailTables extends Migration
             );
         }
 
+        //Local Email service config table
+        if (!Schema::hasTable('local_email_config')) {
+            Schema::create(
+                'local_email_config',
+                function (Blueprint $t) {
+                    $t->integer('service_id')->unsigned()->primary();
+                    $t->foreign('service_id')->references('id')->on('service')->onDelete('cascade');
+                }
+            );
+        }
+
         //Email service parameters config table
         if (!Schema::hasTable('email_parameters_config')) {
             Schema::create(
@@ -71,5 +82,6 @@ class CreateEmailTables extends Migration
         Schema::dropIfExists('smtp_config');
         //Email service parameters config table
         Schema::dropIfExists('email_parameters_config');
+        Schema::dropIfExists('local_email_config');
     }
 }
