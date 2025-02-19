@@ -31,11 +31,11 @@
   "minimum-stability": "dev",
   "prefer-stable":     true,
   "require":     {
-    "dreamfactory/df-core": "~1.0",
+    "dreamfactory/df-core": "~1.0.4",
     "guzzlehttp/guzzle": "~7.2",
-    "symfony/mailer": "~6.1.7",
-    "symfony/mailgun-mailer": "~6.1.0",
-    "symfony/http-client": "~6.1.7"
+    "symfony/mailgun-mailer": "^7.2",
+    "symfony/mailer": "^7.2",
+    "symfony/http-client": "^6.4"
   },
   "require-dev": {
     "phpunit/phpunit": "@stable"

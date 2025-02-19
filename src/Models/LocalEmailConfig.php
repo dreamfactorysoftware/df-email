@@ -2,40 +2,24 @@
 
 namespace DreamFactory\Core\Email\Models;
 
-use DreamFactory\Core\Email\Components\SupportsEmailParameters;
-use DreamFactory\Core\Models\BaseServiceConfigNoDbModel;
+use DreamFactory\Core\Models\BaseServiceConfigModel;
 
-class LocalEmailConfig extends BaseServiceConfigNoDbModel
+class LocalEmailConfig extends BaseServiceConfigModel
 {
-    use SupportsEmailParameters;
+    protected $table = 'local_email_config';
 
     protected $fillable = [
         'service_id',
-        'command',
-        'parameters'
+        'from_name',
+        'from_email',
+        'reply_to_name',
+        'reply_to_email'
     ];
 
-    /**
-     * {@inheritdoc}
-     */
-    public static function getSchema()
-    {
+    protected $casts = [
+        'service_id' => 'integer'
+    ];
 
-        if(!empty(env('SENDMAIL_DEFAULT_COMMAND'))) {
-            $defaultCommand = env('SENDMAIL_DEFAULT_COMMAND');
-        } else {
-            $defaultCommand = '/usr/sbin/sendmail -bs';
-        }
-
-        return [
-            'command' => [
-                'name'        => 'command',
-                'label'       => 'Local Command',
-                'type'        => 'string',
-                'allow_null'  => false,
-                'default'     => $defaultCommand,
-                'description' => 'Local command to be executed to send mail.',
-            ]
-        ];
-    }
+    // Add this property to define which fields should be treated as dates
+    protected $dates = [];
 }
