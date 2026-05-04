@@ -16,6 +16,7 @@ use DreamFactory\Core\Exceptions\BadRequestException;
 use DreamFactory\Core\Exceptions\InternalServerErrorException;
 use DreamFactory\Core\Models\EmailTemplate;
 use DreamFactory\Core\Services\BaseRestService;
+use DreamFactory\Core\System\Components\SsrfValidator;
 use DreamFactory\Core\Utility\FileUtilities;
 use DreamFactory\Core\Utility\Session;
 use Illuminate\Mail\Mailer;
@@ -124,6 +125,10 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
                     if (is_string($f)) {
                         Session::replaceLookups($f);
                         $fileURL = urldecode($f);
+                        // Reject loopback, RFC 1918, AWS metadata, file://,
+                        // gopher:// etc. before any fetch fires. Same
+                        // validator df-system uses for /package, /import, /app.
+                        SsrfValidator::validateExternalUrl($fileURL);
                         $filePath = FileUtilities::importUrlFileToTemp($fileURL);
                         $attachment[] = new Attachment($filePath, basename($fileURL));
                     }
