@@ -62,12 +62,19 @@ class Local extends BaseService
         $tokens = preg_split('/\s+/', $command);
         $exe = array_shift($tokens) ?? '';
 
-        // Executable: literal "sendmail" or absolute-path-ending-in-/sendmail.
-        $exeOk = $exe === 'sendmail'
-            || (str_starts_with($exe, '/') && str_ends_with($exe, '/sendmail'));
+        // Executable: literal allowlist (default: sendmail and common
+        // sendmail-API-compatible MTAs) or an absolute path whose basename
+        // is in the allowlist. Customers using non-default MTAs can extend
+        // via the DF_LOCAL_MAILER_EXES env var (comma-separated).
+        $allowed = self::getAllowedMailerExecutables();
+        $exeBasename = basename($exe);
+        $isAbsolute = str_starts_with($exe, '/');
+        $exeOk = in_array($exe, $allowed, true)
+            || ($isAbsolute && in_array($exeBasename, $allowed, true));
         if (!$exeOk) {
             throw new \InvalidArgumentException(
-                'Sendmail command executable must be "sendmail" or an absolute path ending in "/sendmail".'
+                'Sendmail command executable must be one of: ' . implode(', ', $allowed)
+                . ' (or an absolute path whose basename is one of those).'
             );
         }
 
@@ -83,6 +90,28 @@ class Local extends BaseService
                 );
             }
         }
+    }
+
+    /**
+     * Resolve the allowlist of mailer executable basenames.
+     *
+     * Defaults to sendmail-API-compatible MTAs (sendmail, msmtp, ssmtp,
+     * postfix's qshape sendmail wrapper). Operators with custom MTAs can
+     * extend via the DF_LOCAL_MAILER_EXES env var, e.g.:
+     *   DF_LOCAL_MAILER_EXES=sendmail,msmtp,nullmailer-inject
+     *
+     * @return string[]
+     */
+    private static function getAllowedMailerExecutables(): array
+    {
+        $env = (string) (getenv('DF_LOCAL_MAILER_EXES') ?: '');
+        if ($env !== '') {
+            $list = array_values(array_filter(array_map('trim', explode(',', $env))));
+            if (!empty($list)) {
+                return $list;
+            }
+        }
+        return ['sendmail', 'msmtp', 'ssmtp'];
     }
 
     /**
