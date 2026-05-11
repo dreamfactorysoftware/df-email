@@ -24,11 +24,6 @@ class Local extends BaseService
             $password = Config::get('mail.password');
             $this->transport = Smtp::getTransport($host, $port, $encryption, $username, $password);
         } else {
-            try {
-                self::assertCommandAllowlisted($command);
-            } catch (\InvalidArgumentException $e) {
-                throw new InternalServerErrorException($e->getMessage());
-            }
             $this->transport = static::getTransport($command);
         }
     }
@@ -127,6 +122,12 @@ class Local extends BaseService
 
         if (empty($command)) {
             return new SendmailTransport();
+        }
+
+        try {
+            self::assertCommandAllowlisted($command);
+        } catch (\InvalidArgumentException $e) {
+            throw new InternalServerErrorException($e->getMessage());
         }
 
         return new SendmailTransport($command);
