@@ -21,6 +21,7 @@ use DreamFactory\Core\Utility\FileUtilities;
 use DreamFactory\Core\Utility\Session;
 use Illuminate\Mail\Mailer;
 use Illuminate\Mail\Message;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\Mailer\Transport\TransportInterface as SymfonyTransport;
 use Symfony\Component\Mailer\Mailer as SymfonyMailer;
 use ServiceManager;
@@ -104,6 +105,7 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
     }
 
     /**
+     * @throws BadRequestException
      * @throws InternalServerErrorException
      */
     protected function getUrlAttachment( $path = null): array
@@ -133,6 +135,12 @@ abstract class BaseService extends BaseRestService implements EmailServiceInterf
                         $attachment[] = new Attachment($filePath, basename($fileURL));
                     }
                 }
+            } catch (BadRequestException $e) {
+                // An attachment URL that cannot be used is a client error. The detailed reason goes to the log.
+                Log::debug('Attachment URL not accepted: ' . $e->getMessage());
+                throw new BadRequestException(
+                    'Failed to import attachment file from url. The requested URL is not allowed.'
+                );
             } catch (\Exception $e) {
                 throw new InternalServerErrorException('Failed to import attachment file from url. ' .
                     $e->getMessage());
