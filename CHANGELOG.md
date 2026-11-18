@@ -4,6 +4,9 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.14.2] - 2026-11-18
+- Stability and reliability improvements.
+
 ## [0.8.0] - 2017-12-28
 ### Added
 - Added package discovery
